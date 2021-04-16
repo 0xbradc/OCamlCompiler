@@ -60,8 +60,22 @@ let vars_of_list : string list -> varidset =
   
 (* free_vars exp -- Returns the set of `varid`s corresponding to free
    variables in `exp` *)
-let free_vars (exp : expr) : varidset =
-  failwith "free_vars not implemented" ;;
+let rec free_vars (exp : expr) : varidset =
+  match exp with
+  | Var v -> SS.singleton v                        
+  | Num _ 
+  | Bool _
+  | Raise 
+  | Unassigned -> SS.empty                                           
+  | Unop (_, e) -> free_vars e                 
+  | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)     
+  | Conditional (e1, e2, e3) ->  
+    SS.union (SS.union (free_vars e1) (free_vars e2)) (free_vars e3)
+  | Fun (v, exp) -> SS.remove v (free_vars exp)                  
+  | Let (v, e1, e2) -> SS.union (SS.remove v (free_vars e2)) (free_vars e1)         
+  | Letrec (v, e1, e2) -> 
+    SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))                      
+  | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;;
   
 (* new_varname () -- Returns a freshly minted `varid` constructed with
    a running counter a la `gensym`. Assumes no variable names use the
@@ -88,12 +102,70 @@ let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   String representations of expressions
  *)
    
+
+(* Helper to-string methods *)
+let to_string_binop b : string = 
+  match b with 
+  | Plus -> " + "
+  | Minus -> " - "
+  | Times -> " * "
+  | Equals -> " = "
+  | LessThan -> " < "
+
+let to_string_unop u : string = 
+  match u with 
+  | Negate -> "~-"
+
+
 (* exp_to_concrete_string exp -- Returns a string representation of
    the concrete syntax of the expression `exp` *)
-let exp_to_concrete_string (exp : expr) : string =
-  failwith "exp_to_concrete_string not implemented" ;;
+let rec exp_to_concrete_string (exp : expr) : string =
+  match exp with 
+  | Var v -> v
+  | Num i -> string_of_int i
+  | Bool b -> string_of_bool b
+  | Raise -> "Raise"
+  | Unassigned -> "Unassigned"
+  | Unop (un, e) -> (to_string_unop un) ^ exp_to_concrete_string e
+  | Binop (bi, e1, e2) -> 
+    "(" ^ (exp_to_concrete_string e1) ^ 
+    (to_string_binop bi) ^ 
+    (exp_to_concrete_string e2) ^ ")"
+  | App (e1, e2) -> (exp_to_concrete_string e1) ^ " " ^ (exp_to_concrete_string e2)
+  | Conditional (e1, e2, e3) -> 
+    "if " ^ exp_to_concrete_string e1 ^
+    " then " ^ exp_to_concrete_string e2 ^
+    " else " ^ exp_to_concrete_string e3
+  | Fun (v, e) -> "fun " ^ v ^ " -> " ^ (exp_to_concrete_string e)
+  | Let (v, e1, e2) -> 
+    "let " ^ v ^ " = " ^ (exp_to_concrete_string e1) 
+    ^ " in " ^ (exp_to_concrete_string e2)
+  | Letrec (v, e1, e2) -> 
+    "let rec " ^ v ^ " = " ^ (exp_to_concrete_string e1) 
+    ^ " in " ^ (exp_to_concrete_string e2) ;;
      
+
 (* exp_to_abstract_string exp -- Return a string representation of the
    abstract syntax of the expression `exp` *)
-let exp_to_abstract_string (exp : expr) : string =
-  failwith "exp_to_abstract_string not implemented" ;;
+let rec exp_to_abstract_string (exp : expr) : string =
+  match exp with 
+  | Var v -> "Var " ^ v
+  | Num i -> "Num " ^ (string_of_int i)
+  | Bool b -> "Bool " ^ (string_of_bool b)
+  | Raise -> "Raise"
+  | Unassigned -> "Unassigned"
+  | Unop (un, e) -> "Unop (" ^ (to_string_unop un) ^ " (" ^ (exp_to_abstract_string e) ^ "))"
+  | Binop (bi, e1, e2) -> 
+    "Binop (" ^ (to_string_binop bi) ^ 
+    " (" ^ (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ "))"
+  | App (e1, e2) -> "App (" ^ (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")"
+  | Conditional (e1, e2, e3) -> 
+    "Conditional (" ^ (exp_to_abstract_string e1) ^ ", " ^
+    (exp_to_abstract_string e2) ^ ", " ^ (exp_to_abstract_string e3) ^ ")"
+  | Fun (v, e) -> "Fun (" ^ v ^ ", " ^ (exp_to_abstract_string e) ^ ")"
+  | Let (v, e1, e2) -> 
+    "Let (" ^ v ^ ", " ^ 
+    (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")"
+  | Letrec (v, e1, e2) -> 
+    "Letrec (" ^ v ^ ", " ^ 
+    (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")" ;;
