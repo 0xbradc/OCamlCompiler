@@ -51,7 +51,7 @@ type varidset = SS.t ;;
 (* same_vars varids1 varids2 -- Tests to see if two `varid` sets have
    the same elements (for testing purposes) *)
 let same_vars : varidset -> varidset -> bool =
-  SS.equal;;
+  SS.equal ;;
 
 (* vars_of_list varids -- Generates a set of variable names from a
    list of `varid`s (for testing purposes) *)
@@ -76,6 +76,10 @@ let rec free_vars (exp : expr) : varidset =
   | Letrec (v, e1, e2) ->
     SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))
   | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;;
+
+(* for testing purposes *)
+let x = free_vars (Binop (Plus, (Var "y"), (Var "x"))) ;;
+let _ = SS.iter (fun y -> Printf.printf "%S\n" y) x ;;
   
 
 (* new_varname () -- Returns a freshly minted `varid` constructed with
@@ -100,7 +104,7 @@ let new_varname () : varid =
    capture *)
 let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   let var_set = free_vars exp in 
-  if not SS.mem var_name exp then exp 
+  if not SS.mem var_name var_set then exp 
   else 
     let rec iter e = 
       match e with 
@@ -119,18 +123,17 @@ let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
    
 
 (* Helper to-string methods *)
-let to_string_binop b : string = 
+let to_string_binop_concrete b : string = 
   match b with 
   | Plus -> " + "
   | Minus -> " - "
   | Times -> " * "
   | Equals -> " = "
-  | LessThan -> " < "
+  | LessThan -> " < " ;;
 
-let to_string_unop u : string = 
+let to_string_unop_concrete u : string = 
   match u with 
-  | Negate -> "~-"
-
+  | Negate -> "~-" ;;
 
 (* exp_to_concrete_string exp -- Returns a string representation of
    the concrete syntax of the expression `exp` *)
@@ -141,10 +144,10 @@ let rec exp_to_concrete_string (exp : expr) : string =
   | Bool b -> string_of_bool b
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
-  | Unop (un, e) -> (to_string_unop un) ^ (exp_to_concrete_string e)
+  | Unop (un, e) -> (to_string_unop_concrete un) ^ (exp_to_concrete_string e)
   | Binop (bi, e1, e2) ->
     "(" ^ (exp_to_concrete_string e1) ^
-    (to_string_binop bi) ^ 
+    (to_string_binop_concrete bi) ^ 
     (exp_to_concrete_string e2) ^ ")"
   | App (e1, e2) -> (exp_to_concrete_string e1) ^ " " ^ (exp_to_concrete_string e2)
   | Conditional (e1, e2, e3) ->
@@ -160,6 +163,21 @@ let rec exp_to_concrete_string (exp : expr) : string =
     ^ " in " ^ (exp_to_concrete_string e2) ;;
      
 
+
+(* Helper to-string methods *)
+let to_string_binop_abstract b : string = 
+  match b with 
+  | Plus -> "Plus"
+  | Minus -> "Minus"
+  | Times -> "Times"
+  | Equals -> "Equals"
+  | LessThan -> "LessThan" ;;
+
+let to_string_unop_abstract u : string = 
+  match u with 
+  | Negate -> "Negate" ;;
+
+
 (* exp_to_abstract_string exp -- Return a string representation of the
    abstract syntax of the expression `exp` *)
 let rec exp_to_abstract_string (exp : expr) : string =
@@ -169,9 +187,9 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Bool b -> "Bool " ^ (string_of_bool b)
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
-  | Unop (un, e) -> "Unop (" ^ (to_string_unop un) ^ " (" ^ (exp_to_abstract_string e) ^ "))"
+  | Unop (un, e) -> "Unop (" ^ (to_string_unop_abstract un) ^ " (" ^ (exp_to_abstract_string e) ^ "))"
   | Binop (bi, e1, e2) ->
-    "Binop (" ^ (to_string_binop bi) ^
+    "Binop (" ^ (to_string_binop_abstract bi) ^
     " (" ^ (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ "))"
   | App (e1, e2) ->
     "App (" ^ (exp_to_abstract_string e1) ^ 
