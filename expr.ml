@@ -62,27 +62,30 @@ let vars_of_list : string list -> varidset =
    variables in `exp` *)
 let rec free_vars (exp : expr) : varidset =
   match exp with
-  | Var v -> SS.singleton v                        
-  | Num _ 
+  | Var v -> SS.singleton v
+  | Num _
   | Bool _
-  | Raise 
-  | Unassigned -> SS.empty                                           
-  | Unop (_, e) -> free_vars e                 
-  | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)     
-  | Conditional (e1, e2, e3) ->  
+  | Raise
+  | Unassigned -> SS.empty
+  | Unop (_, e) -> free_vars e
+  | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)
+  | Conditional (e1, e2, e3) ->
     SS.union (SS.union (free_vars e1) (free_vars e2)) (free_vars e3)
-  | Fun (v, exp) -> SS.remove v (free_vars exp)                  
-  | Let (v, e1, e2) -> SS.union (SS.remove v (free_vars e2)) (free_vars e1)         
-  | Letrec (v, e1, e2) -> 
-    SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))                      
+  | Fun (v, exp) -> SS.remove v (free_vars exp)
+  | Let (v, e1, e2) -> SS.union (SS.remove v (free_vars e2)) (free_vars e1)
+  | Letrec (v, e1, e2) ->
+    SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))
   | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;;
   
+
 (* new_varname () -- Returns a freshly minted `varid` constructed with
    a running counter a la `gensym`. Assumes no variable names use the
    prefix "var". (Otherwise, they might accidentally be the same as a
    generated variable name.) *)
+let count = ref ~-1 ;;
 let new_varname () : varid =
-  failwith "new_varname not implemented" ;;
+  count := !count + 1; "var" ^ (string_of_int !count) ;;
+
 
 (*......................................................................
   Substitution 
@@ -96,7 +99,19 @@ let new_varname () : varid =
    substituted for free occurrences of `var_name`, avoiding variable
    capture *)
 let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
-  failwith "subst not implemented" ;;
+  let var_set = free_vars exp in 
+  if not SS.mem var_name exp then exp 
+  else 
+    let rec iter e = 
+      match e with 
+      | Var v -> if (SS.mem v exp) && (v = var_name) then 
+      | Fun 
+      | Let 
+      | Letrec 
+      | _ -> 
+    in 
+    iter exp ;;
+
      
 (*......................................................................
   String representations of expressions
@@ -126,7 +141,7 @@ let rec exp_to_concrete_string (exp : expr) : string =
   | Bool b -> string_of_bool b
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
-  | Unop (un, e) -> (to_string_unop un) ^ exp_to_concrete_string e
+  | Unop (un, e) -> (to_string_unop un) ^ (exp_to_concrete_string e)
   | Binop (bi, e1, e2) ->
     "(" ^ (exp_to_concrete_string e1) ^
     (to_string_binop bi) ^ 
