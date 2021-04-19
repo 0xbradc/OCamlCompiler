@@ -78,8 +78,8 @@ let rec free_vars (exp : expr) : varidset =
   | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;;
 
 (* for testing purposes *)
-let x = free_vars (Binop (Plus, (Var "y"), (Var "x"))) ;;
-let _ = SS.iter (fun y -> Printf.printf "%S\n" y) x ;;
+(* let x = free_vars (Binop (Plus, (Var "y"), (Var "x"))) ;;
+let _ = SS.iter (fun y -> Printf.printf "%S\n" y) x ;; *)
   
 
 (* new_varname () -- Returns a freshly minted `varid` constructed with
@@ -104,15 +104,15 @@ let new_varname () : varid =
    capture *)
 let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   let var_set = free_vars exp in 
-  if not SS.mem var_name var_set then exp 
+  if not (SS.mem var_name var_set) then exp 
   else 
     let rec iter e = 
       match e with 
-      | Var v -> if (SS.mem v exp) && (v = var_name) then 
-      | Fun 
-      | Let 
-      | Letrec 
-      | _ -> 
+      | Var _ (* v -> if (SS.mem v exp) && (v = var_name) then *)
+      | Fun _
+      | Let _
+      | Letrec _ -> exp 
+      | _ -> exp
     in 
     iter exp ;;
 
