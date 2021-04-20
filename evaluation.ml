@@ -114,21 +114,44 @@ let eval_t (exp : expr) (_env : Env.env) : Env.value =
   Env.Val exp ;;
 
 (* The SUBSTITUTION MODEL evaluator -- to be completed *)
-   
-let eval_s (_exp : expr) (_env : Env.env) : Env.value =
-  failwith "eval_s not implemented" ;;
-     
+
+let eval_unop (un : unop) (e : expr) : Env.value = 
+  match un with 
+  | Negate -> 
+
+
+let eval_s (exp : expr) (_env : Env.env) : Env.value =
+  let rec eval_s' (exp' : expr) : Env.value = 
+    match exp' with 
+    | Var v -> raise (EvalError ("Unbound variable " ^ v))
+    | Num _
+    | Bool _
+    | Unassigned -> Env.Val exp'
+    | Raise -> raise (EvalError "Exception raised")
+    | Unop (un, e) -> raise (EvalError "not yet implemented: unop")
+    | Binop (bi, e1, e2) -> raise (EvalError "not yet implemented: binop")
+    | Conditional (e1, e2, e3) -> raise (EvalError "not yet implemented: conditional")
+    | Fun (v, e) -> raise (EvalError "not yet implemented: fun")
+    | Let (v, e1, e2) -> raise (EvalError "not yet implemented: let")
+    | Letrec (v, e1, e2) -> raise (EvalError "not yet implemented: letrec")
+    | App (e1, e2) -> raise (EvalError "not yet implemented: app")
+  in 
+  eval_s' exp ;;
+
+
 (* The DYNAMICALLY-SCOPED ENVIRONMENT MODEL evaluator -- to be
    completed *)
    
 let eval_d (_exp : expr) (_env : Env.env) : Env.value =
   failwith "eval_d not implemented" ;;
-       
+
+
 (* The LEXICALLY-SCOPED ENVIRONMENT MODEL evaluator -- optionally
    completed as (part of) your extension *)
    
 let eval_l (_exp : expr) (_env : Env.env) : Env.value =
   failwith "eval_l not implemented" ;;
+
 
 (* The EXTENDED evaluator -- if you want, you can provide your
    extension as a separate evaluator, or if it is type- and
@@ -137,7 +160,8 @@ let eval_l (_exp : expr) (_env : Env.env) : Env.value =
 
 let eval_e _ =
   failwith "eval_e not implemented" ;;
-  
+
+
 (* Connecting the evaluators to the external world. The REPL in
    `miniml.ml` uses a call to the single function `evaluate` defined
    here. Initially, `evaluate` is the trivial evaluator `eval_t`. But
@@ -146,4 +170,6 @@ let eval_e _ =
    above, not the `evaluate` function, so it doesn't matter how it's
    set when you submit your solution.) *)
    
-let evaluate = eval_t ;;
+(* let evaluate = eval_t ;; *)
+let evaluate = eval_s ;;
+

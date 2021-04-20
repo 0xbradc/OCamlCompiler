@@ -6,16 +6,6 @@ open Expr ;;
 open Evaluation ;;
 
 
-(* IS THERE A WAY TO IMPORT THIS? *)
-(* varidset -- Sets of varids *)
-module SS = Set.Make (struct
-                       type t = varid
-                       let compare = String.compare
-                     end ) ;;
-type varidset = SS.t ;;
-
-
-
 let test_exp_to_concrete_string () =
     unit_test ((exp_to_concrete_string (Var "x")) = "x") "Var x" ;
     unit_test ((exp_to_concrete_string (Num 1)) = "1") "Num 1" ;
@@ -54,16 +44,24 @@ let test_exp_to_abstract_string () =
         "Letrec (\"x\", Num 1, Num 2)" ;;
 
 
-let test_free_vars () =
-    unit_test ((free_vars (Num 1)) = SS.empty) "Num 1" ;
-    unit_test ((free_vars (Bool true)) = SS.empty) "Bool true" ;
-    unit_test ((free_vars (Raise)) = SS.empty) "Raise" ;
-    unit_test ((free_vars (Unassigned)) = SS.empty) "Unassigned" ;
-    unit_test ((free_vars (Var "x")) = SS.singleton "x") "Var x" ;;
-
-
 let test_subst () = 
-    unit_test (true) "blank" ;;
+    unit_test ((subst "x" (Var "y") (Var "x")) = (Var "y")) "Var x -> Var y" ;
+    unit_test ((subst "x" (Num 1) (Num 1)) = (Num 1)) "Num 1" ;
+    unit_test ((subst "x" (Bool true) (Bool true)) = (Bool true)) "Bool true" ;
+    unit_test ((subst "x" Raise Raise) = Raise) "Raise" ;
+    unit_test ((subst "x" Unassigned Unassigned) = Unassigned) "Unassigned" ;
+    unit_test ((subst "x" (Var "y") (Unop (Negate, Var "x"))) = (Unop (Negate, Var "y")))
+        "(Unop (Negate, Var x)) -> (Unop (Negate, Var y))" ;
+    unit_test ((subst "x" (Var "y") (Binop (Plus, Num 1, Var "x"))) = (Binop (Plus, Num 1, Var "y")))
+        "Binop (Plus, Num 1, Num 2))" ;
+    unit_test ((subst "x" (Var "z") (Conditional (Bool true, Var "x", Var "y"))) = 
+        (Conditional (Bool true, Var "z", Var "y"))) "Conditional (Bool true, Var z, Var y)" ;
+    unit_test ((subst "x" (Var "x") (Fun ("x", Num 1))) = (Var "x"))
+        "Fun (\"x\", Num 1)" ;
+    unit_test ((subst "x" (Var "x") (Let ("x", Num 1, Num 2))) = (Var "x"))
+        "Let (\"x\", Num 1, Num 2)" ;
+    unit_test ((subst "x" (Var "x") (Letrec ("x", Num 1, Num 2))) = (Var "x"))
+        "Letrec (\"x\", Num 1, Num 2)" ;;
 
 
 let tests () = 
@@ -72,8 +70,6 @@ let tests () =
     print_newline () ;
     print_string "\nexp_to_abstract_string tests\n";
     test_exp_to_abstract_string () ;
-    print_string "\nfree_vars tests\n";
-    test_free_vars () ;
     print_string "\nsubst tests\n";
     test_subst () ;
     print_newline ();

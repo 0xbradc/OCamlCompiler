@@ -71,24 +71,23 @@ let rec free_vars (exp : expr) : varidset =
   | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)
   | Conditional (e1, e2, e3) ->
     SS.union (SS.union (free_vars e1) (free_vars e2)) (free_vars e3)
-  | Fun (v, exp) -> SS.remove v (free_vars exp)
+  | Fun (v, e) -> SS.remove v (free_vars e)
   | Let (v, e1, e2) -> SS.union (SS.remove v (free_vars e2)) (free_vars e1)
   | Letrec (v, e1, e2) ->
     SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))
   | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;;
-
-(* for testing purposes *)
-(* let x = free_vars (Binop (Plus, (Var "y"), (Var "x"))) ;;
-let _ = SS.iter (fun y -> Printf.printf "%S\n" y) x ;; *)
   
 
 (* new_varname () -- Returns a freshly minted `varid` constructed with
    a running counter a la `gensym`. Assumes no variable names use the
    prefix "var". (Otherwise, they might accidentally be the same as a
    generated variable name.) *)
-let count = ref ~-1 ;;
-let new_varname () : varid =
-  count := !count + 1; "var" ^ (string_of_int !count) ;;
+
+let new_varname () : varid = 
+  let count = ref ~-1 in 
+  let gensym () : varid = 
+    incr count; "var" ^ (string_of_int !count) 
+  in gensym () ;;
 
 
 (*......................................................................
@@ -102,19 +101,40 @@ let new_varname () : varid =
 (* subst var_name repl exp -- Return the expression `exp` with `repl`
    substituted for free occurrences of `var_name`, avoiding variable
    capture *)
-let subst (var_name : varid) (repl : expr) (exp : expr) : expr =
-  let var_set = free_vars exp in 
-  if not (SS.mem var_name var_set) then exp 
-  else 
-    let rec iter e = 
-      match e with 
-      | Var _ (* v -> if (SS.mem v exp) && (v = var_name) then *)
-      | Fun _
-      | Let _
-      | Letrec _ -> exp 
-      | _ -> exp
-    in 
-    iter exp ;;
+let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
+  (* Stored the free variables of repl for faster run-time *)
+  let var_set = free_vars repl in 
+  let rec iter new_expr = 
+    match new_expr with
+    | Var v -> if v = var_name then repl else new_expr
+    | Num _
+    | Bool _
+    | Raise
+    | Unassigned -> new_expr
+    | Unop (u, e) -> Unop (u, iter e)
+    | Binop (b, e1, e2) -> Binop (b, iter e1, iter e2)
+    | Conditional (e1, e2, e3) -> Conditional (iter e1, iter e2, iter e3)
+    | Fun (v, e) -> 
+      if v = var_name then repl
+      (* Check if repl contains variable v *)
+      else if SS.mem v var_set 
+        then let n = new_varname () in Fun (n, iter (subst v (Var n) e))
+      else Fun (v, iter e)
+    | Let (v, e1, e2) ->
+      if v = var_name then repl 
+      (* Check if repl contains variable v *)
+      else if SS.mem v var_set 
+        then let n = new_varname () in Let (n, iter e1, iter (subst n (Var n) e2))
+      else Let (v, iter e1, iter e2)
+    | Letrec (v, e1, e2) ->
+      if v = var_name then repl 
+      (* Check if repl contains variable v *)
+      else if SS.mem v var_set 
+        then let n = new_varname () in Letrec (n, iter e1, iter (subst n (Var n) e2))
+      else Letrec (v, iter e1, iter e2)
+    | App (e1, e2) -> App (iter e1, iter e2)
+  in 
+  iter exp ;;
 
      
 (*......................................................................
@@ -204,3 +224,18 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Letrec (v, e1, e2) ->
     "Letrec (" ^ v ^ ", " ^
     (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")" ;;
+
+
+
+(* Placed here because external files don't have access to SS module *)
+(* Called in expr_tests.ml file *)
+let test_free_vars () : unit =
+  print_string "\nfree_vars tests\n" ;
+  assert ((free_vars (Num 1)) = SS.empty) ;
+  assert ((free_vars (Bool true)) = SS.empty) ;
+  assert ((free_vars (Raise)) = SS.empty) ;
+  assert ((free_vars (Unassigned)) = SS.empty) ;
+  assert ((free_vars (Var "x")) = (SS.singleton "x")) ;
+  print_string "passed\n\n" ;;
+
+let _ = test_free_vars () ;;
