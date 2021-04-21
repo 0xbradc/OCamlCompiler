@@ -44,6 +44,13 @@ let test_exp_to_abstract_string () =
         "Letrec (\"x\", Num 1, Num 2)" ;;
 
 
+let test_new_varname () = 
+    unit_test ((new_varname ()) = "var0") "var0" ;
+    unit_test ((new_varname ()) = "var1") "var1" ;
+    unit_test ((new_varname ()) = "var2") "var2" ;
+    unit_test ((new_varname ()) = "var3") "var3" ;;
+
+
 let test_subst () = 
     unit_test ((subst "x" (Var "y") (Var "x")) = (Var "y")) "Var x -> Var y" ;
     unit_test ((subst "x" (Num 1) (Num 1)) = (Num 1)) "Num 1" ;
@@ -70,6 +77,8 @@ let tests () =
     print_newline () ;
     print_string "\nexp_to_abstract_string tests\n";
     test_exp_to_abstract_string () ;
+    print_string "\nnew_varname tests\n" ;
+    test_new_varname () ;
     print_string "\nsubst tests\n";
     test_subst () ;
     print_newline ();

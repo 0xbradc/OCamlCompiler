@@ -83,12 +83,10 @@ let rec free_vars (exp : expr) : varidset =
    prefix "var". (Otherwise, they might accidentally be the same as a
    generated variable name.) *)
 
-let new_varname () : varid = 
+let new_varname : unit -> varid = 
   let count = ref ~-1 in 
-  let gensym () : varid = 
-    incr count; "var" ^ (string_of_int !count) 
-  in gensym () ;;
-
+  fun () -> incr count; "var" ^ (string_of_int !count) ;;
+  
 
 (*......................................................................
   Substitution 

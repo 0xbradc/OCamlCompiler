@@ -113,30 +113,63 @@ let eval_t (exp : expr) (_env : Env.env) : Env.value =
   (* coerce the expr, unchanged, into a value *)
   Env.Val exp ;;
 
+
 (* The SUBSTITUTION MODEL evaluator -- to be completed *)
 
-let eval_unop (un : unop) (e : expr) : Env.value = 
+(* Helper functions for evaluating unops and binops *)
+let eval_unop (un : unop) (e : expr) : expr = 
   match un with 
   | Negate -> 
+    match e with 
+    | Num i -> Num ((-1) * i)
+    | _ -> raise (EvalError "expecting integer but received something else")
+  | _ -> raise (EvalError "unop operation not supported") ;;
+
+let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
+  match bi with 
+  | Plus -> 
+    (match e1,e2 with 
+    | Num i1, Num i2 -> Num (i1 + i2)
+    | _ -> raise (EvalError "expecting integer but received something else"))
+  | Minus -> 
+    (match e1,e2 with 
+    | Num i1, Num i2 -> Num (i1 - i2)
+    | _ -> raise (EvalError "expecting integer but received something else"))
+  | Times -> 
+    (match e1,e2 with 
+    | Num i1, Num i2 -> Num (i1 * i2)
+    | _ -> raise (EvalError "expecting integer but received something else"))
+  | Equals -> 
+    (match e1,e2 with 
+    | Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
+    | _ -> raise (EvalError "expecting bool but received something else"))
+  | LessThan ->  
+    match e1,e2 with 
+    | Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
+    | _ -> raise (EvalError "expecting num but received something else") ;;
 
 
 let eval_s (exp : expr) (_env : Env.env) : Env.value =
-  let rec eval_s' (exp' : expr) : Env.value = 
+  let rec eval_s' (exp' : expr) : expr = 
     match exp' with 
     | Var v -> raise (EvalError ("Unbound variable " ^ v))
     | Num _
-    | Bool _
-    | Unassigned -> Env.Val exp'
-    | Raise -> raise (EvalError "Exception raised")
-    | Unop (un, e) -> raise (EvalError "not yet implemented: unop")
-    | Binop (bi, e1, e2) -> raise (EvalError "not yet implemented: binop")
-    | Conditional (e1, e2, e3) -> raise (EvalError "not yet implemented: conditional")
+    | Bool _ -> exp'
+    | Unassigned
+    | Raise -> raise EvalException
+    | Unop (un, e) -> eval_unop un (eval_s' e)
+    | Binop (bi, e1, e2) -> eval_binop bi (eval_s' e1) (eval_s' e2) 
+    | Conditional (e1, e2, e3) -> 
+      (match eval_s' e1 with 
+      | Bool true -> (eval_s' e2) 
+      | Bool false -> (eval_s' e3)
+      | _ -> raise (EvalError "conditional expecting bool but received something else"))
     | Fun (v, e) -> raise (EvalError "not yet implemented: fun")
     | Let (v, e1, e2) -> raise (EvalError "not yet implemented: let")
     | Letrec (v, e1, e2) -> raise (EvalError "not yet implemented: letrec")
     | App (e1, e2) -> raise (EvalError "not yet implemented: app")
   in 
-  eval_s' exp ;;
+  Env.Val (eval_s' exp) ;;
 
 
 (* The DYNAMICALLY-SCOPED ENVIRONMENT MODEL evaluator -- to be
