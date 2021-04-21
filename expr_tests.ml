@@ -17,11 +17,13 @@ let test_exp_to_concrete_string () =
         "Binop (Plus (Num 1, Num 2))" ;
     unit_test ((exp_to_concrete_string (Conditional(Bool true, Num 1, Num 2)) = "if true then 1 else 2")) 
         "Conditional (Bool true, Num 1, Num 2)" ;
-    unit_test ((exp_to_concrete_string (Fun("x", Num 1))) = "fun x -> 1") "Fun (x, Num 1)" ;
+    unit_test ((exp_to_concrete_string (Fun("x", Num 1))) = "(fun x -> 1)") "Fun (x, Num 1)" ;
     unit_test ((exp_to_concrete_string (Let("x", Num 1, Num 2))) = "let x = 1 in 2") 
         "Let(x, Num 1, Num 2)" ;
     unit_test ((exp_to_concrete_string (Letrec("x", Num 1, Num 2))) = "let rec x = 1 in 2") 
-        "Letrec(x, Num 1, Num 2)" ;;
+        "Letrec(x, Num 1, Num 2)" ;
+    unit_test ((exp_to_concrete_string (App ((Fun ("x", Var "x")), Num 2))) = "(fun x -> x) 2") 
+        "Applying f to 2" ;;
 
   
 let test_exp_to_abstract_string () =
@@ -41,7 +43,9 @@ let test_exp_to_abstract_string () =
     unit_test ((exp_to_abstract_string (Let ("x", Num 1, Num 2))) = "Let (x, Num 1, Num 2)") 
         "Let (\"x\", Num 1, Num 2)" ;
     unit_test ((exp_to_abstract_string (Letrec ("x", Num 1, Num 2))) = "Letrec (x, Num 1, Num 2)") 
-        "Letrec (\"x\", Num 1, Num 2)" ;;
+        "Letrec (\"x\", Num 1, Num 2)" ;
+    unit_test ((exp_to_abstract_string (App (Var "x", Num 2))) = "App (Var x, Num 2)") 
+        "App (Var x, Num 2)" ;;
 
 
 let test_new_varname () = 
@@ -71,6 +75,14 @@ let test_subst () =
         "Letrec (\"x\", Num 1, Num 2)" ;;
 
 
+let test_eval_s () = () ;;
+    (* unit_test ((eval_s (Var "x") []) = "evaluation error: Unbound variable x") "error on Var" ;
+    unit_test ((eval_s (Num 1) []) = "Num 1") "Num 1" ;
+    unit_test ((eval_s (Bool true) []) = "Bool true") "Bool true" ;
+    unit_test ((eval_s Raise []) = "evaluation exception") "exception on Raise" ;
+    unit_test ((eval_s Unassigned []) = "evaluation exception") "exception on Unassigned" ;; *)
+
+
 let tests () = 
     print_string "exp_to_concrete_string tests\n";
     test_exp_to_concrete_string () ;
@@ -81,7 +93,9 @@ let tests () =
     test_new_varname () ;
     print_string "\nsubst tests\n";
     test_subst () ;
-    print_newline ();
+    print_string "\ntest_eval_s\n";
+    test_eval_s () ;
+    print_newline () ;
     () ;;
 
 let _ = tests () ;;

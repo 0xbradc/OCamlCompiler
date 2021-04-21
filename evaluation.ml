@@ -68,19 +68,33 @@ module Env : ENV =
     let empty () : env = [] ;;
 
     let close (exp : expr) (env : env) : value =
-      failwith "close not implemented" ;;
+      Closure (exp, env) ;;
 
     let lookup (env : env) (varname : varid) : value =
-      failwith "lookup not implemented" ;;
+      try ! (snd (List.hd (List.filter (fun (x,y) -> x = varname) env)))
+      with
+      | _ -> raise (EvalError "Variable does not exist in the environment") ;;
 
-    let extend (env : env) (varname : varid) (loc : value ref) : env =
-      failwith "extend not implemented" ;;
-
-    let value_to_string ?(printenvp : bool = true) (v : value) : string =
-      failwith "value_to_string not implemented" ;;
+    let rec extend (env : env) (varname : varid) (loc : value ref) : env =
+      match env with 
+      | [] -> (varname, loc) :: env 
+      | (hd1, hd2) :: tl -> 
+        if hd1 = varname then (varname, loc) :: tl 
+        else (hd1, hd2) :: (extend tl varname loc) ;;
 
     let env_to_string (env : env) : string =
-      failwith "env_to_string not implemented" ;;
+      let str = ref "" in 
+      let _ = List.iter (fun (var,loc) -> str := !str ^ var ^ " = " ^ string_of_int (!loc) ^ "; ") in
+      "E[" ^ !str ^ "]" ;; 
+
+    let value_to_string ?(printenvp : bool = true) (v : value) : string =
+      match v with
+      | Val exp -> "Val: " ^ (exp_to_concrete_string exp)
+      | Closure (exp, env) -> 
+        "Closure: " ^ (exp_to_concrete_string exp) ^ (
+          if printenvp then " in env: " ^ (env_to_string env) ^ ")" 
+          else ""
+        ) ;;
   end
 ;;
 
@@ -159,15 +173,21 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
     | Raise -> raise EvalException
     | Unop (un, e) -> eval_unop un (eval_s' e)
     | Binop (bi, e1, e2) -> eval_binop bi (eval_s' e1) (eval_s' e2) 
-    | Conditional (e1, e2, e3) -> 
+    | Conditional (e1, e2, e3) -> (
+        match eval_s' e1 with 
+        | Bool true -> (eval_s' e2) 
+        | Bool false -> (eval_s' e3)
+        | _ -> raise (EvalError "expecting bool but received something else")
+      )
+    | Fun _ -> exp'
+    | Let (v, e1, e2) -> eval_s' (subst v (eval_s' e1) e2)
+    | Letrec (v, e1, e2) -> 
+      let new_e1 = eval_s' (subst v (Letrec (v, e1, Var v)) e1) in 
+      eval_s' (subst v new_e1 e2)
+    | App (e1, e2) -> 
       (match eval_s' e1 with 
-      | Bool true -> (eval_s' e2) 
-      | Bool false -> (eval_s' e3)
-      | _ -> raise (EvalError "conditional expecting bool but received something else"))
-    | Fun (v, e) -> raise (EvalError "not yet implemented: fun")
-    | Let (v, e1, e2) -> raise (EvalError "not yet implemented: let")
-    | Letrec (v, e1, e2) -> raise (EvalError "not yet implemented: letrec")
-    | App (e1, e2) -> raise (EvalError "not yet implemented: app")
+      |  Fun (v, e) -> eval_s' (subst v (eval_s' e2) e)
+      | _ -> raise (EvalError "bad redex"))
   in 
   Env.Val (eval_s' exp) ;;
 
@@ -205,4 +225,3 @@ let eval_e _ =
    
 (* let evaluate = eval_t ;; *)
 let evaluate = eval_s ;;
-
