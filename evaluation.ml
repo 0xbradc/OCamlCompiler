@@ -85,7 +85,7 @@ module Env : ENV =
     let env_to_string (env : env) : string =
       let str = ref "" in 
       let _ = List.iter (fun (var,loc) -> str := !str ^ var ^ " = " ^ string_of_int (!loc) ^ "; ") in
-      "E[" ^ !str ^ "]" ;; 
+      "E{" ^ !str ^ "}" ;; 
 
     let value_to_string ?(printenvp : bool = true) (v : value) : string =
       match v with
@@ -194,6 +194,10 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
 
 (* The DYNAMICALLY-SCOPED ENVIRONMENT MODEL evaluator -- to be
    completed *)
+
+(* Used to keep track of which model to use *)
+type model = Dynamic | Lexical | Extended ;;
+let current = ref Dynamic ;;
    
 let eval_d (_exp : expr) (_env : Env.env) : Env.value =
   failwith "eval_d not implemented" ;;
