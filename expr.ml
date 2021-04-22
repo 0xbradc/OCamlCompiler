@@ -204,10 +204,11 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Bool b -> "Bool " ^ (string_of_bool b)
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
-  | Unop (un, e) -> "Unop (" ^ (to_string_unop_abstract un) ^ " (" ^ (exp_to_abstract_string e) ^ "))"
+  | Unop (un, e) -> 
+    "Unop (" ^ (to_string_unop_abstract un) ^ ", " ^ (exp_to_abstract_string e) ^ ")"
   | Binop (bi, e1, e2) ->
-    "Binop (" ^ (to_string_binop_abstract bi) ^
-    " (" ^ (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ "))"
+    "Binop (" ^ (to_string_binop_abstract bi) ^ ", " ^ (exp_to_abstract_string e1) 
+    ^ ", " ^ (exp_to_abstract_string e2) ^ ")"
   | App (e1, e2) ->
     "App (" ^ (exp_to_abstract_string e1) ^ 
     ", " ^ (exp_to_abstract_string e2) ^ ")"
@@ -221,69 +222,3 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Letrec (v, e1, e2) ->
     "Letrec (" ^ v ^ ", " ^
     (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")" ;;
-
-
-
-(* Placed here because external files don't have access to SS module *)
-(* Called in expr_tests.ml file *)
-let test_free_vars () : unit =
-  print_string "\nfree_vars tests\n" ;
-  try 
-    print_string "Var x"; assert ((free_vars (Var "x")) = (SS.singleton "x")); 
-      print_string " passed\n";
-    print_string "Num 1"; assert ((free_vars (Num 1)) = SS.empty); 
-      print_string " passed\n";
-    print_string "Bool true"; assert ((free_vars (Bool true)) = SS.empty); 
-      print_string " passed\n";
-    print_string "Raise"; assert ((free_vars (Raise)) = SS.empty); 
-      print_string " passed\n";
-    print_string "Unassigned"; assert ((free_vars (Unassigned)) = SS.empty); 
-      print_string " passed\n";
-    print_string "Unop"; assert ((free_vars (Unop (Negate, Var "x"))) = (SS.singleton "x")); 
-      print_string " passed\n";
-    print_string "Binop"; assert ((free_vars (Binop (Plus, Var "x", Var "y"))) = 
-      (SS.empty |> SS.add "x" |> SS.add "y")); 
-      print_string " passed\n";
-    print_string "Conditional"; assert ((free_vars (Conditional (Var "x", Num 1, Num 2))) = 
-      (SS.singleton "x")); print_string " passed\n" ;
-    print_string "Fun"; assert ((free_vars (Fun ("x", Num 1))) = 
-      (SS.empty)); print_string " passed\n" ;
-    print_string "Let"; 
-      assert ((free_vars (Let ("x", Num 1, Var "x"))) = (SS.empty)) ; 
-      assert ((free_vars (Let ("x", Var "x", Num 2))) = (SS.singleton "x")) ; 
-      assert ((free_vars (Let ("x", Num 1, Num 2))) = (SS.empty)) ;
-      print_string " passed\n" ;
-    print_string "Letrec"; 
-      assert ((free_vars (Letrec ("x", Num 1, Var "x"))) = (SS.empty)) ;
-      assert ((free_vars (Letrec ("x", Var "x", Num 2))) = (SS.empty)) ;
-      assert ((free_vars (Letrec ("x", Num 1, Num 2))) = (SS.empty)) ;
-      print_string " passed\n" ;
-    print_string "App"; 
-      assert ((free_vars (App (Var "x", Num 1))) = (SS.singleton "x")) ; 
-      assert ((free_vars (App (Num 1, Num 2))) = (SS.empty)) ; 
-      print_string " passed\n\n" 
-  (* This catches assertion fails and allows other tests to still run *)
-  with 
-  | _ -> print_string " FAILED\n\n" ;;
-
-let _ = test_free_vars () ;;
-
-
-
-(* 
-let rec free_vars (exp : expr) : varidset =
-  match exp with
-  | Var v -> SS.singleton v
-  | Num _
-  | Bool _
-  | Raise
-  | Unassigned -> SS.empty
-  | Unop (_, e) -> free_vars e
-  | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)
-  | Conditional (e1, e2, e3) ->
-    SS.union (SS.union (free_vars e1) (free_vars e2)) (free_vars e3)
-  | Fun (v, e) -> SS.remove v (free_vars e)
-  | Let (v, e1, e2) -> SS.union (free_vars e1) (SS.remove v (free_vars e2))
-  | Letrec (v, e1, e2) ->
-    SS.union (SS.remove v (free_vars e1)) (SS.remove v (free_vars e2))
-  | App (e1, e2) -> SS.union (free_vars e1) (free_vars e2) ;; *)

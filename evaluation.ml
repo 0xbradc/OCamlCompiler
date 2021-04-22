@@ -63,7 +63,7 @@ module Env : ENV =
     type env = (varid * value ref) list
      and value =
        | Val of expr
-       | Closure of (expr * env)
+       | Closure of (expr * env) ;;
 
     let empty () : env = [] ;;
 
@@ -71,7 +71,7 @@ module Env : ENV =
       Closure (exp, env) ;;
 
     let lookup (env : env) (varname : varid) : value =
-      try ! (snd (List.hd (List.filter (fun (x,y) -> x = varname) env)))
+      try ! (snd (List.hd (List.filter (fun (x,_) -> x = varname) env)))
       with
       | _ -> raise (EvalError "Variable does not exist in the environment") ;;
 
@@ -84,7 +84,7 @@ module Env : ENV =
 
     let env_to_string (env : env) : string =
       let str = ref "" in 
-      let _ = List.iter (fun (var,loc) -> str := !str ^ var ^ " = " ^ string_of_int (!loc) ^ "; ") in
+      List.iter (fun (var,_) -> str := (!str ^ var ^ " = NEED TO COMPLETE THIS PART; ")) env ;
       "E{" ^ !str ^ "}" ;; 
 
     let value_to_string ?(printenvp : bool = true) (v : value) : string =
@@ -128,41 +128,23 @@ let eval_t (exp : expr) (_env : Env.env) : Env.value =
   Env.Val exp ;;
 
 
-(* The SUBSTITUTION MODEL evaluator -- to be completed *)
-
 (* Helper functions for evaluating unops and binops *)
-let eval_unop (un : unop) (e : expr) : expr = 
-  match un with 
-  | Negate -> 
-    match e with 
-    | Num i -> Num ((-1) * i)
-    | _ -> raise (EvalError "expecting integer but received something else")
-  | _ -> raise (EvalError "unop operation not supported") ;;
+let eval_unop (un : unop) (Env.Val e : Env.value) : expr = 
+  match un,e with 
+  | Negate, Num i -> Num ((-1) * i)
+  | (_,_) -> raise (EvalError "unop operation failed") ;;
 
-let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
-  match bi with 
-  | Plus -> 
-    (match e1,e2 with 
-    | Num i1, Num i2 -> Num (i1 + i2)
-    | _ -> raise (EvalError "expecting integer but received something else"))
-  | Minus -> 
-    (match e1,e2 with 
-    | Num i1, Num i2 -> Num (i1 - i2)
-    | _ -> raise (EvalError "expecting integer but received something else"))
-  | Times -> 
-    (match e1,e2 with 
-    | Num i1, Num i2 -> Num (i1 * i2)
-    | _ -> raise (EvalError "expecting integer but received something else"))
-  | Equals -> 
-    (match e1,e2 with 
-    | Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
-    | _ -> raise (EvalError "expecting bool but received something else"))
-  | LessThan ->  
-    match e1,e2 with 
-    | Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
-    | _ -> raise (EvalError "expecting num but received something else") ;;
+let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : expr =
+  match bi,e1,e2 with 
+  | Plus, Num i1, Num i2 -> Num (i1 + i2)
+  | Minus, Num i1, Num i2 -> Num (i1 - i2)
+  | Times, Num i1, Num i2 -> Num (i1 * i2)
+  | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
+  | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
+  | (_,_,_) -> raise (EvalError "binop operation failed") ;;
 
 
+(* The SUBSTITUTION MODEL evaluator -- to be completed *)
 let eval_s (exp : expr) (_env : Env.env) : Env.value =
   let rec eval_s' (exp' : expr) : expr = 
     match exp' with 
@@ -171,8 +153,8 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
     | Bool _ -> exp'
     | Unassigned
     | Raise -> raise EvalException
-    | Unop (un, e) -> eval_unop un (eval_s' e)
-    | Binop (bi, e1, e2) -> eval_binop bi (eval_s' e1) (eval_s' e2) 
+    | Unop (un, e) -> eval_unop un (Env.Val (eval_s' e))
+    | Binop (bi, e1, e2) -> eval_binop bi (Env.Val (eval_s' e1)) (Env.Val (eval_s' e2)) 
     | Conditional (e1, e2, e3) -> (
         match eval_s' e1 with 
         | Bool true -> (eval_s' e2) 
@@ -186,7 +168,7 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
       eval_s' (subst v new_e1 e2)
     | App (e1, e2) -> 
       (match eval_s' e1 with 
-      |  Fun (v, e) -> eval_s' (subst v (eval_s' e2) e)
+      | Fun (v, e) -> eval_s' (subst v (eval_s' e2) e)
       | _ -> raise (EvalError "bad redex"))
   in 
   Env.Val (eval_s' exp) ;;
@@ -194,13 +176,44 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
 
 (* The DYNAMICALLY-SCOPED ENVIRONMENT MODEL evaluator -- to be
    completed *)
-
-(* Used to keep track of which model to use *)
-type model = Dynamic | Lexical | Extended ;;
-let current = ref Dynamic ;;
-   
-let eval_d (_exp : expr) (_env : Env.env) : Env.value =
-  failwith "eval_d not implemented" ;;
+let rec eval_d (exp : expr) (env : Env.env) : Env.value =
+  match exp with 
+  | Var v -> (
+      try 
+        match Env.lookup env v with 
+        | Env.Val new_exp -> Env.Val new_exp
+        | Env.Closure (new_exp, new_env) -> eval_d new_exp new_env
+      with 
+        Not_found -> raise (EvalError ("Unbound variable " ^ v))
+    )
+  | Num _
+  | Bool _ -> Env.Val exp
+  | Unassigned
+  | Raise -> raise EvalException
+  | Unop (un, e) -> Env.Val (eval_unop un (eval_d e env))
+  | Binop (bi, e1, e2) -> Env.Val (eval_binop bi (eval_d e1 env) (eval_d e2 env))
+  | Conditional (e1, e2, e3) -> (
+      match eval_d e1 env with 
+      | Env.Val (Bool true) -> eval_d e2 env
+      | Env.Val (Bool false) -> eval_d e3 env
+      | _ -> raise (EvalError "expecting bool but received something else")
+    )
+  | Fun _ -> Env.close exp (Env.empty ())
+  | Let (v, e1, e2) -> 
+    let new_e1 = eval_d e1 env in 
+    eval_d e2 (Env.extend env v (ref new_e1))
+  | Letrec (v, e1, e2) -> 
+    let new_val = ref (Env.Val Unassigned) in
+    let new_env = Env.extend env v new_val in 
+    let new_e1 = eval_d e1 new_env in 
+    (match new_e1 with 
+    | Env.Val (Var _) -> raise (EvalError "hit variable")
+    | _ -> new_val :=  new_e1; eval_d e2 new_env)
+  | App (e1, e2) -> 
+    let new_val = ref (eval_d e2 env) in 
+    match eval_d e1 env with 
+    | Env.Closure (Fun (v, e3), _) -> eval_d e3 (Env.extend env v new_val)
+    | _ -> raise (EvalError "non-function applied") ;;
 
 
 (* The LEXICALLY-SCOPED ENVIRONMENT MODEL evaluator -- optionally
@@ -226,6 +239,15 @@ let eval_e _ =
    to implement them. (We will directly unit test the four evaluators
    above, not the `evaluate` function, so it doesn't matter how it's
    set when you submit your solution.) *)
-   
-(* let evaluate = eval_t ;; *)
-let evaluate = eval_s ;;
+
+(* Used to keep track of which model to use *)
+type model = Substitution | Dynamic | Lexical | Extended ;;
+(* Semantics model we are currently using *)
+let current = ref Dynamic ;;
+
+let evaluate = 
+  match !current with 
+  | Substitution -> eval_s
+  | Dynamic -> eval_d
+  | Lexical -> eval_l
+  | Extended -> eval_e ;;
