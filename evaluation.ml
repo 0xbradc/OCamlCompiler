@@ -71,16 +71,11 @@ module Env : ENV =
       Closure (exp, env) ;;
 
     let lookup (env : env) (varname : varid) : value =
-      try ! (snd (List.hd (List.filter (fun (x,_) -> x = varname) env)))
-      with
-      | _ -> raise (EvalError "Variable does not exist in the environment") ;;
+      try !(List.assoc varname env)
+      with _ -> raise (EvalError ("Variable " ^ varname ^ " does not exist in the environment")) ;;
 
-    let rec extend (env : env) (varname : varid) (loc : value ref) : env =
-      match env with 
-      | [] -> (varname, loc) :: env 
-      | (hd1, hd2) :: tl -> 
-        if hd1 = varname then (varname, loc) :: tl 
-        else (hd1, hd2) :: (extend tl varname loc) ;;
+    let extend (env : env) (varname : varid) (loc : value ref) : env =
+      (varname, loc) :: (List.remove_assoc varname env) ;;
 
     let env_to_string (env : env) : string =
       let str = ref "" in 
@@ -132,7 +127,7 @@ let eval_t (exp : expr) (_env : Env.env) : Env.value =
 let eval_unop (un : unop) (Env.Val e : Env.value) : expr = 
   match un,e with 
   | Negate, Num i -> Num ((-1) * i)
-  | (_,_) -> raise (EvalError "unop operation failed") ;;
+  | (_,_) -> raise (EvalError "invalid unop operation") ;;
 
 let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : expr =
   match bi,e1,e2 with 
@@ -140,8 +135,9 @@ let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : 
   | Minus, Num i1, Num i2 -> Num (i1 - i2)
   | Times, Num i1, Num i2 -> Num (i1 * i2)
   | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
+  | Equals, Num i1, Num i2 -> if i1 = i2 then Bool true else Bool false
   | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
-  | (_,_,_) -> raise (EvalError "binop operation failed") ;;
+  | _,_,_ -> raise (EvalError "invalid binop operation") ;;
 
 
 (* The SUBSTITUTION MODEL evaluator -- to be completed *)
@@ -154,7 +150,7 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
     | Unassigned
     | Raise -> raise EvalException
     | Unop (un, e) -> eval_unop un (Env.Val (eval_s' e))
-    | Binop (bi, e1, e2) -> eval_binop bi (Env.Val (eval_s' e1)) (Env.Val (eval_s' e2)) 
+    | Binop (bi, e1, e2) -> eval_binop bi (Env.Val (eval_s' e1)) (Env.Val (eval_s' e2))
     | Conditional (e1, e2, e3) -> (
         match eval_s' e1 with 
         | Bool true -> (eval_s' e2) 
@@ -241,13 +237,23 @@ let eval_e _ =
    set when you submit your solution.) *)
 
 (* Used to keep track of which model to use *)
-type model = Substitution | Dynamic | Lexical | Extended ;;
+type model = Substitution | Dynamic | Lexical | Extended | Nil ;;
 (* Semantics model we are currently using *)
-let current = ref Dynamic ;;
+let current = ref Nil ;;
 
 let evaluate = 
+  (* USER CREATED *)
+  while !current = Nil do 
+    let preference = print_string ("\nPlease enter a valid semantics format and press enter:\n" ^
+              "(\"s\" for substitution, \"d\" for dynamic\n"); 
+              read_line ()
+    in 
+    if preference = "s" then current := Substitution
+    else if preference = "d" then current := Dynamic 
+  done;
   match !current with 
   | Substitution -> eval_s
   | Dynamic -> eval_d
   | Lexical -> eval_l
-  | Extended -> eval_e ;;
+  | Extended -> eval_e
+  | Nil -> raise EvalException ;;
