@@ -6,6 +6,16 @@ open Expr ;;
 open Evaluation ;;
 
 
+(* Used for testing below *)
+let test_lists f (tester_lst : 'a list) (answer_lst : 'b list) = 
+    List.iter2 
+        (fun elem1 elem2 -> 
+            unit_test ((f elem1) = elem2) (exp_to_abstract_string elem1)
+        )
+        tester_lst 
+        answer_lst ;;
+
+
 let test_exp_to_concrete_string () =
     let tester_lst = [
         (Var "x");
@@ -35,16 +45,7 @@ let test_exp_to_concrete_string () =
         "let rec x = 1 in 2";
         "(fun x -> x) 2"
     ] in 
-    List.iter2 
-        (fun elem1 elem2 -> 
-            try 
-                assert ((exp_to_concrete_string elem1) = elem2);
-                print_string ((exp_to_abstract_string elem1) ^ " passed\n")
-            (* Catches errors and reports them as failed *)
-            with _ ->  print_string ((exp_to_abstract_string elem1) ^ " FAILED\n")
-        )
-        tester_lst 
-        answer_lst ;;
+    test_lists exp_to_concrete_string tester_lst answer_lst ;;
 
   
 let test_exp_to_abstract_string () =
@@ -76,16 +77,7 @@ let test_exp_to_abstract_string () =
         "Letrec (x, Num 1, Num 2)";
         "App (Var x, Num 2)"
     ] in 
-    List.iter2 
-        (fun elem1 elem2 -> 
-            try 
-                assert ((exp_to_abstract_string elem1) = elem2);
-                print_string ((exp_to_abstract_string elem1) ^ " passed\n")
-            (* Catches errors and reports them as failed *)
-            with _ ->  print_string ((exp_to_abstract_string elem1) ^ " FAILED\n")
-        )
-        tester_lst 
-        answer_lst ;;
+    test_lists exp_to_abstract_string tester_lst answer_lst ;;
 
 
 let test_new_varname () = 
@@ -109,6 +101,7 @@ let test_free_vars () =
         (Let ("x", Num 1, Var "x"));
         (Let ("x", Var "x", Num 2));
         (Let ("x", Num 1, Num 2));
+        (Let ("x", Var "x", Var "x"));
         (Letrec ("x", Num 1, Var "x"));
         (Letrec ("x", Var "x", Num 2));
         (Letrec ("x", Num 1, Num 2));
@@ -130,6 +123,7 @@ let test_free_vars () =
             [];
             ["x"];
             [];
+            ["x"];
             [];
             [];
             [];
@@ -137,16 +131,7 @@ let test_free_vars () =
             []
         ] 
     in 
-    List.iter2 
-        (fun elem1 elem2 -> 
-            try 
-                assert (same_vars (free_vars elem1) elem2);
-                print_string ((exp_to_abstract_string elem1) ^ " passed\n")
-            (* Catches errors and reports them as failed *)
-            with _ ->  print_string ((exp_to_abstract_string elem1) ^ " FAILED\n")
-        )
-        tester_lst 
-        answer_lst ;;
+    test_lists free_vars tester_lst answer_lst ;;
 
 
 let test_subst () =

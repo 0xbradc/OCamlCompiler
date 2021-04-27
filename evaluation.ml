@@ -163,6 +163,9 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
       let new_e1 = eval_s' (subst v (Letrec (v, e1, Var v)) e1) in 
       eval_s' (subst v new_e1 e2)
     | App (e1, e2) -> 
+      (* for debugging *)
+      print_string (exp_to_abstract_string e1); print_newline () ;
+      print_string (exp_to_abstract_string e2); print_newline () ;
       (match eval_s' e1 with 
       | Fun (v, e) -> eval_s' (subst v (eval_s' e2) e)
       | _ -> raise (EvalError "bad redex"))
@@ -245,7 +248,7 @@ let evaluate =
   (* USER CREATED *)
   while !current = Nil do 
     let preference = print_string ("\nPlease enter a valid semantics format and press enter:\n" ^
-              "(\"s\" for substitution, \"d\" for dynamic\n"); 
+              "(\"s\" for substitution, \"d\" for dynamic)\n"); 
               read_line ()
     in 
     if preference = "s" then current := Substitution
