@@ -102,37 +102,34 @@ let new_varname : unit -> varid =
 let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   (* Stored the free variables of repl for faster run-time *)
   let var_set = free_vars repl in 
-  let rec iter new_expr = 
-    match new_expr with
-    | Var v -> if v = var_name then repl else new_expr
-    | Num _
-    | Bool _
-    | Raise
-    | Unassigned -> new_expr
-    | Unop (u, e) -> Unop (u, iter e)
-    | Binop (b, e1, e2) -> Binop (b, iter e1, iter e2)
-    | Conditional (e1, e2, e3) -> Conditional (iter e1, iter e2, iter e3)
+  let rec subst' exp' = 
+    match exp' with
+    | Var v -> if v = var_name then repl else exp'
+    | Num _ | Bool _ | Raise | Unassigned -> exp'
+    | Unop (u, e) -> Unop (u, subst' e)
+    | Binop (b, e1, e2) -> Binop (b, subst' e1, subst' e2)
+    | Conditional (e1, e2, e3) -> Conditional (subst' e1, subst' e2, subst' e3)
     | Fun (v, e) -> 
-      if v = var_name then repl
+      if v = var_name then exp'
       (* Check if repl contains variable v *)
       else if SS.mem v var_set 
-        then let n = new_varname () in Fun (n, iter (subst v (Var n) e))
-      else Fun (v, iter e)
+        then let n = new_varname () in Fun (n, subst' (subst v (Var n) e))
+      else Fun (v, subst' e)
     | Let (v, e1, e2) ->
-      if v = var_name then repl 
+      if v = var_name then Let(v, subst' e1, e2)
       (* Check if repl contains variable v *)
       else if SS.mem v var_set 
-        then let n = new_varname () in Let (n, iter e1, iter (subst n (Var n) e2))
-      else Let (v, iter e1, iter e2)
+        then let n = new_varname () in Let (n, subst' e1, subst' (subst v (Var n) e2))
+      else Let (v, subst' e1, subst' e2)
     | Letrec (v, e1, e2) ->
-      if v = var_name then repl 
+      if v = var_name then Letrec(v, subst' e1, e2)
       (* Check if repl contains variable v *)
       else if SS.mem v var_set 
-        then let n = new_varname () in Letrec (n, iter e1, iter (subst n (Var n) e2))
-      else Letrec (v, iter e1, iter e2)
-    | App (e1, e2) -> App (iter e1, iter e2)
+        then let n = new_varname () in Letrec (n, subst' (subst n (Var n) e1), subst' e2)
+      else Letrec (v, subst' e1, subst' e2)
+    | App (e1, e2) -> App (subst' e1, subst' e2)
   in 
-  iter exp ;;
+  subst' exp ;;
 
      
 (*......................................................................

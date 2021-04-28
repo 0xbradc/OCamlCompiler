@@ -145,10 +145,8 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
   let rec eval_s' (exp' : expr) : expr = 
     match exp' with 
     | Var v -> raise (EvalError ("Unbound variable " ^ v))
-    | Num _
-    | Bool _ -> exp'
-    | Unassigned
-    | Raise -> raise EvalException
+    | Num _ | Bool _ -> exp'
+    | Unassigned | Raise -> raise EvalException
     | Unop (un, e) -> eval_unop un (Env.Val (eval_s' e))
     | Binop (bi, e1, e2) -> eval_binop bi (Env.Val (eval_s' e1)) (Env.Val (eval_s' e2))
     | Conditional (e1, e2, e3) -> (
@@ -163,12 +161,9 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
       let new_e1 = eval_s' (subst v (Letrec (v, e1, Var v)) e1) in 
       eval_s' (subst v new_e1 e2)
     | App (e1, e2) -> 
-      (* for debugging *)
-      print_string (exp_to_abstract_string e1); print_newline () ;
-      print_string (exp_to_abstract_string e2); print_newline () ;
-      (match eval_s' e1 with 
+      match eval_s' e1 with 
       | Fun (v, e) -> eval_s' (subst v (eval_s' e2) e)
-      | _ -> raise (EvalError "bad redex"))
+      | _ -> raise (EvalError "non-function applied")
   in 
   Env.Val (eval_s' exp) ;;
 
@@ -242,8 +237,17 @@ let eval_e _ =
 (* Used to keep track of which model to use *)
 type model = Substitution | Dynamic | Lexical | Extended | Nil ;;
 (* Semantics model we are currently using *)
-let current = ref Nil ;;
+let current = ref Dynamic ;;
 
+let evaluate = 
+  match !current with 
+  | Substitution -> eval_s
+  | Dynamic -> eval_d
+  | Lexical -> eval_l
+  | Extended -> eval_e
+  | Nil -> raise EvalException ;; 
+
+(* 
 let evaluate = 
   (* USER CREATED *)
   while !current = Nil do 
@@ -259,4 +263,4 @@ let evaluate =
   | Dynamic -> eval_d
   | Lexical -> eval_l
   | Extended -> eval_e
-  | Nil -> raise EvalException ;;
+  | Nil -> raise EvalException ;; *)
