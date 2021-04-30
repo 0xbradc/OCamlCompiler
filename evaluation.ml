@@ -72,7 +72,7 @@ module Env : ENV =
 
     let lookup (env : env) (varname : varid) : value =
       try !(List.assoc varname env)
-      with _ -> raise (EvalError ("Variable " ^ varname ^ " does not exist in the environment")) ;;
+      with _ -> raise (EvalError ("Variable \"" ^ varname ^ "\" does not exist in the environment")) ;;
 
     let extend (env : env) (varname : varid) (loc : value ref) : env =
       (varname, loc) :: (List.remove_assoc varname env) ;;
@@ -127,17 +127,27 @@ let eval_t (exp : expr) (_env : Env.env) : Env.value =
 let eval_unop (un : unop) (Env.Val e : Env.value) : expr = 
   match un,e with 
   | Negate, Num i -> Num ((-1) * i)
-  | (_,_) -> raise (EvalError "invalid unop operation") ;;
+  | Negate, Float f -> Float ((-1.0) *. f)
+  | _,_ -> raise (EvalError "invalid unop operation \nmake sure to check types") ;;
 
 let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : expr =
   match bi,e1,e2 with 
   | Plus, Num i1, Num i2 -> Num (i1 + i2)
+  | Plus, Float i1, Float i2 -> Float (i1 +. i2)
   | Minus, Num i1, Num i2 -> Num (i1 - i2)
+  | Minus, Float i1, Float i2 -> Float (i1 -. i2)
   | Times, Num i1, Num i2 -> Num (i1 * i2)
+  | Times, Float i1, Float i2 -> Float (i1 *. i2)
+  | Divide, Num i1, Num i2 -> Num (i1 / i2)
+  | Divide, Float i1, Float i2 -> Float (i1 /. i2)
   | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
   | Equals, Num i1, Num i2 -> if i1 = i2 then Bool true else Bool false
+  | Equals, Float i1, Float i2 -> 
+    (* checks for near equality *)
+    if abs_float (i1 -. i2) < 0.0001 then Bool true 
+    else Bool false
   | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
-  | _,_,_ -> raise (EvalError "invalid binop operation") ;;
+  | _,_,_ -> raise (EvalError "invalid binop operation \nmake sure to check types") ;;
 
 
 (* The SUBSTITUTION MODEL evaluator -- to be completed *)
@@ -145,7 +155,7 @@ let eval_s (exp : expr) (_env : Env.env) : Env.value =
   let rec eval_s' (exp' : expr) : expr = 
     match exp' with 
     | Var v -> raise (EvalError ("Unbound variable " ^ v))
-    | Num _ | Bool _ -> exp'
+    | Num _ | Float _ | Bool _ -> exp'
     | Unassigned | Raise -> raise EvalException
     | Unop (un, e) -> eval_unop un (Env.Val (eval_s' e))
     | Binop (bi, e1, e2) -> eval_binop bi (Env.Val (eval_s' e1)) (Env.Val (eval_s' e2))
@@ -180,10 +190,8 @@ let rec eval_d (exp : expr) (env : Env.env) : Env.value =
       with 
         Not_found -> raise (EvalError ("Unbound variable " ^ v))
     )
-  | Num _
-  | Bool _ -> Env.Val exp
-  | Unassigned
-  | Raise -> raise EvalException
+  | Num _ | Float _ | Bool _ -> Env.Val exp
+  | Unassigned | Raise -> raise EvalException
   | Unop (un, e) -> Env.Val (eval_unop un (eval_d e env))
   | Binop (bi, e1, e2) -> Env.Val (eval_binop bi (eval_d e1 env) (eval_d e2 env))
   | Conditional (e1, e2, e3) -> (
@@ -235,25 +243,26 @@ let eval_e _ =
    set when you submit your solution.) *)
 
 (* Used to keep track of which model to use *)
-type model = Substitution | Dynamic | Lexical | Extended | Nil ;;
+type model = Substitution | Dynamic | Lexical | Nil ;;
 (* Semantics model we are currently using *)
-let current = ref Dynamic ;;
+let current = ref Nil ;;
 
-let evaluate = 
+(* let evaluate = 
   match !current with 
   | Substitution -> eval_s
   | Dynamic -> eval_d
   | Lexical -> eval_l
   | Extended -> eval_e
-  | Nil -> raise EvalException ;; 
+  | Nil -> raise EvalException ;;  *)
 
-(* 
+
 let evaluate = 
   (* USER CREATED *)
   while !current = Nil do 
-    let preference = print_string ("\nPlease enter a valid semantics format and press enter:\n" ^
-              "(\"s\" for substitution, \"d\" for dynamic)\n"); 
-              read_line ()
+    let preference = 
+      print_string ("\nPlease enter a valid semantics format and press enter:\n" ^
+        "(\"s\" for substitution, \"d\" for dynamic)\n"); 
+      read_line ()
     in 
     if preference = "s" then current := Substitution
     else if preference = "d" then current := Dynamic 
@@ -262,5 +271,4 @@ let evaluate =
   | Substitution -> eval_s
   | Dynamic -> eval_d
   | Lexical -> eval_l
-  | Extended -> eval_e
-  | Nil -> raise EvalException ;; *)
+  | Nil -> raise EvalException ;;

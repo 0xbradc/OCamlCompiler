@@ -15,6 +15,7 @@ type binop =
   | Plus
   | Minus
   | Times
+  | Divide
   | Equals
   | LessThan
 ;;
@@ -24,6 +25,7 @@ type varid = string ;;
 type expr =
   | Var of varid                         (* variables *)
   | Num of int                           (* integers *)
+  | Float of float                       (* floats *)
   | Bool of bool                         (* booleans *)
   | Unop of unop * expr                  (* unary operators *)
   | Binop of binop * expr * expr         (* binary operators *)
@@ -63,10 +65,7 @@ let vars_of_list : string list -> varidset =
 let rec free_vars (exp : expr) : varidset =
   match exp with
   | Var v -> SS.singleton v
-  | Num _
-  | Bool _
-  | Raise
-  | Unassigned -> SS.empty
+  | Num _ | Float _ | Bool _ | Raise | Unassigned -> SS.empty
   | Unop (_, e) -> free_vars e
   | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)
   | Conditional (e1, e2, e3) ->
@@ -105,7 +104,7 @@ let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   let rec subst' exp' = 
     match exp' with
     | Var v -> if v = var_name then repl else exp'
-    | Num _ | Bool _ | Raise | Unassigned -> exp'
+    | Num _ | Float _ | Bool _ | Raise | Unassigned -> exp'
     | Unop (u, e) -> Unop (u, subst' e)
     | Binop (b, e1, e2) -> Binop (b, subst' e1, subst' e2)
     | Conditional (e1, e2, e3) -> Conditional (subst' e1, subst' e2, subst' e3)
@@ -137,17 +136,19 @@ let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
  *)
    
 (* Helper to-string methods *)
+let to_string_unop_concrete u : string = 
+  match u with 
+  | Negate -> "~-" ;;
+
 let to_string_binop_concrete b : string = 
   match b with 
   | Plus -> " + "
   | Minus -> " - "
   | Times -> " * "
+  | Divide -> " / "
   | Equals -> " = "
   | LessThan -> " < " ;;
 
-let to_string_unop_concrete u : string = 
-  match u with 
-  | Negate -> "~-" ;;
 
 (* exp_to_concrete_string exp -- Returns a string representation of
    the concrete syntax of the expression `exp` *)
@@ -155,6 +156,7 @@ let rec exp_to_concrete_string (exp : expr) : string =
   match exp with
   | Var v -> v
   | Num i -> string_of_int i
+  | Float f -> string_of_float f
   | Bool b -> string_of_bool b
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
@@ -179,25 +181,27 @@ let rec exp_to_concrete_string (exp : expr) : string =
 
 
 (* Helper to-string methods *)
+let to_string_unop_abstract u : string = 
+  match u with 
+  | Negate -> "Negate" ;;
+
 let to_string_binop_abstract b : string = 
   match b with 
   | Plus -> "Plus"
   | Minus -> "Minus"
   | Times -> "Times"
+  | Divide -> "Divide"
   | Equals -> "Equals"
   | LessThan -> "LessThan" ;;
-
-let to_string_unop_abstract u : string = 
-  match u with 
-  | Negate -> "Negate" ;;
 
 
 (* exp_to_abstract_string exp -- Return a string representation of the
    abstract syntax of the expression `exp` *)
 let rec exp_to_abstract_string (exp : expr) : string =
   match exp with 
-  | Var v -> "Var " ^ v
+  | Var v -> "Var \"" ^ v ^ "\""
   | Num i -> "Num " ^ (string_of_int i)
+  | Float f -> "Float " ^ (string_of_float f)
   | Bool b -> "Bool " ^ (string_of_bool b)
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
@@ -206,16 +210,16 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Binop (bi, e1, e2) ->
     "Binop (" ^ (to_string_binop_abstract bi) ^ ", " ^ (exp_to_abstract_string e1) 
     ^ ", " ^ (exp_to_abstract_string e2) ^ ")"
-  | App (e1, e2) ->
-    "App (" ^ (exp_to_abstract_string e1) ^ 
-    ", " ^ (exp_to_abstract_string e2) ^ ")"
   | Conditional (e1, e2, e3) ->
     "Conditional (" ^ (exp_to_abstract_string e1) ^ ", " ^
     (exp_to_abstract_string e2) ^ ", " ^ (exp_to_abstract_string e3) ^ ")"
-  | Fun (v, e) -> "Fun (" ^ v ^ ", " ^ (exp_to_abstract_string e) ^ ")"
+  | Fun (v, e) -> "Fun (\"" ^ v ^ "\", " ^ (exp_to_abstract_string e) ^ ")"
   | Let (v, e1, e2) ->
-    "Let (" ^ v ^ ", " ^
+    "Let (\"" ^ v ^ "\", " ^
     (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")"
   | Letrec (v, e1, e2) ->
-    "Letrec (" ^ v ^ ", " ^
-    (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")" ;;
+    "Letrec (\"" ^ v ^ "\", " ^
+    (exp_to_abstract_string e1) ^ ", " ^ (exp_to_abstract_string e2) ^ ")" 
+  | App (e1, e2) ->
+    "App (" ^ (exp_to_abstract_string e1) ^ 
+    ", " ^ (exp_to_abstract_string e2) ^ ")";;

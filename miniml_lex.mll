@@ -37,14 +37,21 @@
                        (";;", EOF);
                        ("~-", NEG);
                        ("+", PLUS);
+                       ("+.", PLUS);
                        ("-", MINUS);
+                       ("-.", MINUS);
                        ("*", TIMES);
+                       ("*.", TIMES);
+                       ("/", DIVIDE);
+                       ("/.", DIVIDE);
                        ("(", OPEN);
                        (")", CLOSE)
                      ]
 }
 
+
 let digit = ['0'-'9']
+let float_digit = ['0'-'9'] ['.']*
 let id = ['a'-'z'] ['a'-'z' '0'-'9']*
 let sym = ['(' ')'] | (['$' '&' '*' '+' '-' '/' '=' '<' '>' '^'
                             '.' '~' ';' '!' '?' '%' ':' '#']+)
@@ -53,6 +60,10 @@ rule token = parse
   | digit+ as inum
         { let num = int_of_string inum in
           INT num
+        }
+  | f_digit+ as ifloat
+        { let flo = float_of_string ifloat in 
+          FLOAT flo
         }
   | id as word
         { try

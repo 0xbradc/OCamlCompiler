@@ -5,6 +5,8 @@ open Expr ;;
 (* Make evaluation solution available for testing *)
 open Evaluation ;;
 
+open Miniml ;;
+
 
 (* Used for more efficient testing below *)
 let test_lists (f : 'a -> 'b) (tester_lst : expr list) (answer_lst : 'b list) = 
@@ -65,7 +67,7 @@ let test_exp_to_abstract_string () =
         (App (Var "x", Num 2))
     ] in 
     let answer_lst = [
-        "Var x";
+        "Var \"x\"";
         "Num 1";
         "Bool true";
         "Raise";
@@ -73,10 +75,10 @@ let test_exp_to_abstract_string () =
         "Unop (Negate, Num 1)";
         "Binop (Plus, Num 1, Num 2)";
         "Conditional (Bool true, Num 1, Num 2)";
-        "Fun (x, Num 1)";
-        "Let (x, Num 1, Num 2)";
-        "Letrec (x, Num 1, Num 2)";
-        "App (Var x, Num 2)"
+        "Fun (\"x\", Num 1)";
+        "Let (\"x\", Num 1, Num 2)";
+        "Letrec (\"x\", Num 1, Num 2)";
+        "App (Var \"x\", Num 2)"
     ] in 
     test_lists exp_to_abstract_string tester_lst answer_lst ;;
 
@@ -108,6 +110,7 @@ let test_free_vars () =
         (Letrec ("x", Num 1, Num 2));
         (App (Var "x", Num 1));
         (App (Num 1, Num 2));
+        (str_to_exp "let f = fun x -> fun y -> if x < y then y else f y x in f 0 1 ;;")
     ]
     in 
     let answer_lst = 
@@ -130,6 +133,7 @@ let test_free_vars () =
             [];
             ["x"];
             [];
+            ["f"]
         ] 
     in 
     test_lists free_vars tester_lst answer_lst ;;
@@ -148,17 +152,12 @@ let test_subst () =
         ((Var "z"), (Fun ("x", Var "y"))); (* 1st fun if statement *)
         ((Var "y"), (Fun ("y", Var "y"))); (* 2nd fun if statement *)
         ((Var "z"), (Fun ("y", Var "x"))); (* 3rd fun if statement *)
-
-        (* Let *)
         ((Var "y"), (Let ("x", Var "x", Var "x"))); (* 1st let if statement *)
         ((Var "y"), (Let ("y", Var "y", Var "y"))); (* 2nd let if statement *)
         ((Var "z"), (Let ("y", Var "x", Var "x"))); (* 3rd let if statement *)
-
-        (* Letrec *)
         ((Var "y"), (Letrec ("x", Var "x", Var "x"))); (* 1st letrec if statement *)
         ((Var "y"), (Letrec ("y", Var "y", Var "y"))); (* 2nd letrec if statement *)
         ((Var "z"), (Letrec ("y", Var "x", Var "x"))); (* 3rd letrec if statement *)
-
         ((Var "z"), (App (Var "x", Var "y")))
     ] in 
     let answer_lst = [
@@ -173,24 +172,19 @@ let test_subst () =
         (Fun ("x", Var "y")); (* 1st fun if statement *)
         (Fun ("var4", Var "var4")); (* 2nd fun if statement *)
         (Fun ("y", Var "z")); (* 3rd fun if statement *)
-
-        (* Let *)
         (Let ("x", Var "y", Var "x")); (* 1st let if statement *)
         (Let ("var5", Var "y", Var "var5")); (* 2nd let if statement *)
         (Let ("y", Var "z", Var "z")); (* 3rd let if statement *)
-
-        (* Letrec *)
         (Letrec ("x", Var "y", Var "x")); (* 1st letrec if statement *)
         (Letrec ("var6", Var "y", Var "y")); (* 2ndrec let if statement *)
         (Letrec ("y", Var "z", Var "z")); (* 3rd letrec if statement *)
-
         (App (Var "z", Var "y"))
     ] in 
     try List.iter2 
         (fun (elem1a, elem1b) elem2 -> 
             unit_test 
                 ((subst "x" elem1a elem1b) = elem2) 
-                ((exp_to_abstract_string elem1b) ^ " -> " ^ (exp_to_abstract_string elem2))
+                ((exp_to_abstract_string elem1b) ^ "\n --> " ^ (exp_to_abstract_string elem2))
         )
         tester_lst 
         answer_lst 
@@ -218,21 +212,21 @@ let test_eval_s () =
         ((App (Fun ("x", (Binop (Plus, Var "x", Num 4))), Num 4)), (Env.empty ()))
     ] in 
     let answer_lst = [
-        (Env.Val (Num 1));
-        (Val (Bool true));
-        (Val (Num ~-1));
-        (Val (Num 11));
-        (Val (Num 1));
-        (Val (Fun ("x", Num 1)));
-        (Val (Num 1));
-        (Val (Num 1));
-        (Val (Num 8))
+        (Num 1);
+        (Bool true);
+        (Num ~-1);
+        (Num 11);
+        (Num 1);
+        (Fun ("x", Num 1));
+        (Num 1);
+        (Num 1);
+        (Num 8)
     ] in 
     try List.iter2 
         (fun (elem1a, elem1b) elem2 -> 
             unit_test 
-                ((eval_s elem1a elem1b) = elem2) 
-                (exp_to_abstract_string elem1a)
+                ((eval_s elem1a elem1b) = (Env.Val elem2)) 
+                ((exp_to_abstract_string elem1a) ^ "\n --> " ^ (exp_to_concrete_string elem2))
         )
         tester_lst 
         answer_lst 
@@ -260,21 +254,21 @@ let test_eval_d () =
         ((App (Fun ("x", (Binop (Plus, Var "x", Num 4))), Num 4)), (Env.empty ()))
     ] in 
     let answer_lst = [
-        (Env.Val (Num 1));
-        (Env.Val (Bool true));
-        (Env.Val (Num ~-1));
-        (Env.Val (Num 11));
-        (Env.Val (Num 1));
-        (Env.Val (Fun ("x", Num 1)));
-        (Env.Val (Num 1));
-        (Env.Val (Num 1));
-        (Env.Val (Num 8))
+        (Num 1);
+        (Bool true);
+        (Num ~-1);
+        (Num 11);
+        (Num 1);
+        (Fun ("x", Num 1));
+        (Num 1);
+        (Num 1);
+        (Num 8)
     ] in 
     try List.iter2 
         (fun (elem1a, elem1b) elem2 -> 
             unit_test 
-                ((eval_d elem1a elem1b) = elem2) 
-                (exp_to_abstract_string elem1a)
+                ((eval_d elem1a elem1b) = (Env.Val elem2))
+                ((exp_to_abstract_string elem1a) ^ "\n --> " ^ (exp_to_concrete_string elem2))
         )
         tester_lst 
         answer_lst 
