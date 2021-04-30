@@ -13,6 +13,7 @@
 %token NEG
 %token PLUS MINUS 
 %token TIMES DIVIDE
+%token MODULO
 %token LESSTHAN EQUALS
 %token IF THEN ELSE 
 %token FUNCTION
@@ -24,6 +25,7 @@
 
 %nonassoc IF
 %left LESSTHAN EQUALS
+%left MODULO
 %left PLUS MINUS
 %left TIMES DIVIDE
 %nonassoc NEG
@@ -47,6 +49,7 @@ expnoapp: INT                   { Num $1 }
         | exp MINUS exp         { Binop(Minus, $1, $3) }
         | exp TIMES exp         { Binop(Times, $1, $3) }
         | exp DIVIDE exp        { Binop(Divide, $1, $3) }
+        | exp MODULO exp        { Binop(Modulo, $1, $3) }
         | exp EQUALS exp        { Binop(Equals, $1, $3) }
         | exp LESSTHAN exp      { Binop(LessThan, $1, $3) }
         | NEG exp               { Unop(Negate, $2) }

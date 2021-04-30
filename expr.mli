@@ -18,6 +18,7 @@ type binop =
   | Minus
   | Times
   | Divide
+  | Modulo 
   | Equals
   | LessThan
 ;;

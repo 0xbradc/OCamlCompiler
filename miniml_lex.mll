@@ -44,6 +44,7 @@
                        ("*.", TIMES);
                        ("/", DIVIDE);
                        ("/.", DIVIDE);
+                       ("%", MODULO);
                        ("(", OPEN);
                        (")", CLOSE)
                      ]
@@ -61,7 +62,7 @@ rule token = parse
         { let num = int_of_string inum in
           INT num
         }
-  | f_digit+ as ifloat
+  | float_digit+ as ifloat
         { let flo = float_of_string ifloat in 
           FLOAT flo
         }

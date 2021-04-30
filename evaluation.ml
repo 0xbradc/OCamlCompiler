@@ -140,13 +140,15 @@ let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : 
   | Times, Float i1, Float i2 -> Float (i1 *. i2)
   | Divide, Num i1, Num i2 -> Num (i1 / i2)
   | Divide, Float i1, Float i2 -> Float (i1 /. i2)
+  | Modulo, Num i1, Num i2 -> Num (i1 mod i2)
   | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
   | Equals, Num i1, Num i2 -> if i1 = i2 then Bool true else Bool false
   | Equals, Float i1, Float i2 -> 
     (* checks for near equality *)
-    if abs_float (i1 -. i2) < 0.0001 then Bool true 
+    if abs_float (i1 -. i2) < 0.00001 then Bool true 
     else Bool false
   | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
+  | LessThan, Float i1, Float i2 -> if i1 < i2 then Bool true else Bool false
   | _,_,_ -> raise (EvalError "invalid binop operation \nmake sure to check types") ;;
 
 

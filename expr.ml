@@ -16,6 +16,7 @@ type binop =
   | Minus
   | Times
   | Divide
+  | Modulo
   | Equals
   | LessThan
 ;;
@@ -146,6 +147,7 @@ let to_string_binop_concrete b : string =
   | Minus -> " - "
   | Times -> " * "
   | Divide -> " / "
+  | Modulo -> " mod "
   | Equals -> " = "
   | LessThan -> " < " ;;
 
@@ -191,6 +193,7 @@ let to_string_binop_abstract b : string =
   | Minus -> "Minus"
   | Times -> "Times"
   | Divide -> "Divide"
+  | Modulo -> "Modulo"
   | Equals -> "Equals"
   | LessThan -> "LessThan" ;;
 
