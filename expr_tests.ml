@@ -23,6 +23,7 @@ let test_exp_to_concrete_string () =
     let tester_lst = [
         (Var "x");
         (Num 1);
+        (Float 1.);
         (Bool true);
         (Raise);
         (Unassigned);
@@ -37,6 +38,7 @@ let test_exp_to_concrete_string () =
     let answer_lst = [
         "x";
         "1";
+        "1.";
         "true";
         "Raise";
         "Unassigned";
@@ -55,6 +57,7 @@ let test_exp_to_abstract_string () =
     let tester_lst = [
         (Var "x");
         (Num 1);
+        (Float 1.);
         (Bool true);
         (Raise);
         (Unassigned);
@@ -69,6 +72,7 @@ let test_exp_to_abstract_string () =
     let answer_lst = [
         "Var \"x\"";
         "Num 1";
+        "Float 1.";
         "Bool true";
         "Raise";
         "Unassigned";
@@ -94,6 +98,7 @@ let test_free_vars () =
     let tester_lst = [
         (Var "x");
         (Num 1);
+        (Float 1.);
         (Bool true);
         (Raise);
         (Unassigned);
@@ -116,6 +121,7 @@ let test_free_vars () =
     let answer_lst = 
         List.map vars_of_list [
             ["x"];
+            [];
             [];
             [];
             [];
@@ -143,6 +149,7 @@ let test_subst () =
     let tester_lst = [
         ((Var "y"), (Var "x"));
         ((Num 1), (Num 1));
+        ((Float 1.), (Float 1.));
         ((Bool true), (Bool true));
         (Unassigned, Unassigned);
         (Raise, Raise);
@@ -163,6 +170,7 @@ let test_subst () =
     let answer_lst = [
         (Var "y");
         (Num 1);
+        (Float 1.);
         (Bool true);
         Unassigned;
         Raise;
@@ -200,33 +208,42 @@ let test_eval_s () =
     try let _ = eval_s Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
     with _ -> print_string "Unassigned passed\n";
 
+    (* For these tests, I utilized the str_to_exp function to emulate command line input *)
     let tester_lst = [
-        ((Num 1), (Env.empty ()));
-        ((Bool true), (Env.empty ()));
-        ((Unop (Negate, Num 1)), (Env.empty ()));
-        ((Binop (Plus, Num 1, Num 10)), (Env.empty ()));
-        ((Conditional (Bool true, Num 1, Num 2)), (Env.empty ()));
-        ((Fun ("x", Num 1)), (Env.empty ()));
-        ((Let ("x", Num 1, Var "x")), (Env.empty ()));
-        ((Letrec ("x", Num 1, Var "x")), (Env.empty ()));
-        ((App (Fun ("x", (Binop (Plus, Var "x", Num 4))), Num 4)), (Env.empty ()))
+        ("1 ;;", (Env.empty ()));
+        ("1. ;;", (Env.empty ()));
+        ("true ;;", (Env.empty ()));
+        ("~-1 ;;", (Env.empty ()));
+        ("1 + 10 ;;", (Env.empty ()));
+        ("if true then 42 else 21 ;;", (Env.empty ()));
+        ("fun x -> 1 ;;", (Env.empty ()));
+        ("let x = 2 in x ;;", (Env.empty ()));
+        ("let rec x = 3 in x ;;", (Env.empty ()));
+        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
+        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
+        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
+        ("42 % 10 ;;", (Env.empty ()))
     ] in 
     let answer_lst = [
         (Num 1);
+        (Float 1.);
         (Bool true);
         (Num ~-1);
         (Num 11);
-        (Num 1);
+        (Num 42);
         (Fun ("x", Num 1));
-        (Num 1);
-        (Num 1);
-        (Num 8)
+        (Num 2);
+        (Num 3);
+        (Num 6);
+        (* (Num 8); *)
+        (Num 4);
+        (Num 2)
     ] in 
     try List.iter2 
         (fun (elem1a, elem1b) elem2 -> 
             unit_test 
-                ((eval_s elem1a elem1b) = (Env.Val elem2)) 
-                ((exp_to_abstract_string elem1a) ^ "\n --> " ^ (exp_to_concrete_string elem2))
+                ((eval_s (str_to_exp elem1a) elem1b) = (Env.Val elem2)) 
+                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
         )
         tester_lst 
         answer_lst 
@@ -243,32 +260,40 @@ let test_eval_d () =
     with _ -> print_string "Unassigned passed\n";
 
     let tester_lst = [
-        ((Num 1), (Env.empty ()));
-        ((Bool true), (Env.empty ()));
-        ((Unop (Negate, Num 1)), (Env.empty ()));
-        ((Binop (Plus, Num 1, Num 10)), (Env.empty ()));
-        ((Conditional (Bool true, Num 1, Num 2)), (Env.empty ()));
-        ((Fun ("x", Num 1)), (Env.empty ()));
-        ((Let ("x", Num 1, Var "x")), (Env.empty ()));
-        ((Letrec ("x", Num 1, Var "x")), (Env.empty ()));
-        ((App (Fun ("x", (Binop (Plus, Var "x", Num 4))), Num 4)), (Env.empty ()))
+        ("1 ;;", (Env.empty ()));
+        ("1. ;;", (Env.empty ()));
+        ("true ;;", (Env.empty ()));
+        ("~-1 ;;", (Env.empty ()));
+        ("1 + 10 ;;", (Env.empty ()));
+        ("if true then 42 else 21 ;;", (Env.empty ()));
+        ("fun x -> 1 ;;", (Env.empty ()));
+        ("let x = 2 in x ;;", (Env.empty ()));
+        ("let rec x = 3 in x ;;", (Env.empty ()));
+        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
+        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
+        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
+        ("42 % 10 ;;", (Env.empty ()))
     ] in 
     let answer_lst = [
         (Num 1);
+        (Float 1.);
         (Bool true);
         (Num ~-1);
         (Num 11);
-        (Num 1);
+        (Num 42);
         (Fun ("x", Num 1));
-        (Num 1);
-        (Num 1);
-        (Num 8)
+        (Num 2);
+        (Num 3);
+        (Num 6);
+        (* (Num 8); *)
+        (Num 5);
+        (Num 2)
     ] in 
     try List.iter2 
         (fun (elem1a, elem1b) elem2 -> 
             unit_test 
-                ((eval_d elem1a elem1b) = (Env.Val elem2))
-                ((exp_to_abstract_string elem1a) ^ "\n --> " ^ (exp_to_concrete_string elem2))
+                ((eval_d (str_to_exp elem1a) elem1b) = (Env.Val elem2))
+                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
         )
         tester_lst 
         answer_lst 
