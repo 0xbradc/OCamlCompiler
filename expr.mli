@@ -10,6 +10,7 @@
 (* Unary operators *)
 type unop =
   | Negate
+  | Not
 ;;
 
 (* Binary operators *)
@@ -21,6 +22,9 @@ type binop =
   | Modulo 
   | Equals
   | LessThan
+  | LessThanOrEqual
+  | GreaterThan
+  | GreaterThanOrEqual
 ;;
 
 (* Variable identifers *)

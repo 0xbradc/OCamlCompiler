@@ -222,7 +222,7 @@ let test_eval_s () =
         ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
         (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
         ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
-        ("42 % 10 ;;", (Env.empty ()))
+        ("42 mod 10 ;;", (Env.empty ()))
     ] in 
     let answer_lst = [
         (Num 1);
@@ -247,16 +247,16 @@ let test_eval_s () =
         )
         tester_lst 
         answer_lst 
-    with _ -> raise (EvalError "test list lengths do not match") ;;
+    with _ -> raise (EvalError "eval_s failed for some reason") ;;
 
 
 let test_eval_d () = 
     (* Using try-with because these are supposed to throw errors/exceptions *)
-    try let _ = eval_s (Var "x") (Env.empty ()) in print_string "Var is unbound FAILED\n" 
+    try let _ = eval_d (Var "x") (Env.empty ()) in print_string "Var is unbound FAILED\n" 
     with _ -> print_string "Var unbound passed\n" ;
-    try let _ = eval_s Raise (Env.empty ()) in print_string "Raise FAILED\n" 
+    try let _ = eval_d Raise (Env.empty ()) in print_string "Raise FAILED\n" 
     with _ -> print_string "Raise passed\n" ;
-    try let _ = eval_s Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
+    try let _ = eval_d Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
     with _ -> print_string "Unassigned passed\n";
 
     let tester_lst = [
@@ -272,7 +272,7 @@ let test_eval_d () =
         ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
         (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
         ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
-        ("42 % 10 ;;", (Env.empty ()))
+        ("42 mod 10 ;;", (Env.empty ()))
     ] in 
     let answer_lst = [
         (Num 1);
@@ -297,7 +297,57 @@ let test_eval_d () =
         )
         tester_lst 
         answer_lst 
-    with _ -> raise (EvalError "test list lengths do not match") ;;
+    with _ -> raise (EvalError "eval_d failed for some reason") ;;
+
+
+let test_eval_l () = 
+    (* Using try-with because these are supposed to throw errors/exceptions *)
+    try let _ = eval_l (Var "x") (Env.empty ()) in print_string "Var is unbound FAILED\n" 
+    with _ -> print_string "Var unbound passed\n" ;
+    try let _ = eval_l Raise (Env.empty ()) in print_string "Raise FAILED\n" 
+    with _ -> print_string "Raise passed\n" ;
+    try let _ = eval_l Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
+    with _ -> print_string "Unassigned passed\n";
+
+    let tester_lst = [
+        ("1 ;;", (Env.empty ()));
+        ("1. ;;", (Env.empty ()));
+        ("true ;;", (Env.empty ()));
+        ("~-1 ;;", (Env.empty ()));
+        ("1 + 10 ;;", (Env.empty ()));
+        ("if true then 42 else 21 ;;", (Env.empty ()));
+        ("fun x -> 1 ;;", (Env.empty ()));
+        ("let x = 2 in x ;;", (Env.empty ()));
+        ("let rec x = 3 in x ;;", (Env.empty ()));
+        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
+        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
+        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
+        ("42 mod 10 ;;", (Env.empty ()))
+    ] in 
+    let answer_lst = [
+        (Num 1);
+        (Float 1.);
+        (Bool true);
+        (Num ~-1);
+        (Num 11);
+        (Num 42);
+        (Fun ("x", Num 1));
+        (Num 2);
+        (Num 3);
+        (Num 6);
+        (* (Num 8); *)
+        (Num 4);
+        (Num 2)
+    ] in 
+    try List.iter2 
+        (fun (elem1a, elem1b) elem2 -> 
+            unit_test 
+                ((eval_l (str_to_exp elem1a) elem1b) = (Env.Val elem2))
+                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
+        )
+        tester_lst 
+        answer_lst 
+    with _ -> raise (EvalError "eval_l failed for some reason") ;;
 
 
 let tests () = 
@@ -310,12 +360,14 @@ let tests () =
     test_new_varname () ;
     print_string "\nfree_vars tests\n" ;
     test_free_vars () ;
-    print_string "\nsubst tests\n";
+    print_string "\nsubst tests\n" ;
     test_subst () ;
-    print_string "\ntest_eval_s\n";
+    print_string "\neval_s tests\n" ;
     test_eval_s () ;
-    print_string "\ntest_eval_d\n";
+    print_string "\neval_d tests\n" ;
     test_eval_d () ;
+    print_string "\neval_l tests\n" ;
+    test_eval_l () ;
     print_newline () ;
     () ;;
 

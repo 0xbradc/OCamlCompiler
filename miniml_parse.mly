@@ -14,7 +14,7 @@
 %token PLUS MINUS 
 %token TIMES DIVIDE
 %token MODULO
-%token LESSTHAN EQUALS
+%token LESSTHAN GREATERTHAN LESSTHANOREQUAL GREATERTHANOREQUAL EQUALS 
 %token IF THEN ELSE 
 %token FUNCTION
 %token RAISE
@@ -22,6 +22,7 @@
 %token <int> INT 
 %token <float> FLOAT 
 %token TRUE FALSE
+%token NOT
 
 %nonassoc IF
 %left LESSTHAN EQUALS
@@ -51,8 +52,12 @@ expnoapp: INT                   { Num $1 }
         | exp DIVIDE exp        { Binop(Divide, $1, $3) }
         | exp MODULO exp        { Binop(Modulo, $1, $3) }
         | exp EQUALS exp        { Binop(Equals, $1, $3) }
-        | exp LESSTHAN exp      { Binop(LessThan, $1, $3) }
+        | exp LESSTHAN exp              { Binop(LessThan, $1, $3) }
+        | exp GREATERTHAN exp           { Binop(GreaterThan, $1, $3) }
+        | exp LESSTHANOREQUAL exp       { Binop(LessThanOrEqual, $1, $3) }
+        | exp GREATERTHANOREQUAL exp    { Binop(GreaterThanOrEqual, $1, $3) }
         | NEG exp               { Unop(Negate, $2) }
+        | NOT exp               { Unop(Not, $2) }
         | IF exp THEN exp ELSE exp      { Conditional($2, $4, $6) }
         | LET ID EQUALS exp IN exp      { Let($2, $4, $6) }
         | LET REC ID EQUALS exp IN exp  { Letrec($3, $5, $7) }

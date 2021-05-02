@@ -130,32 +130,39 @@ let val_to_expr (v : Env.value) : expr =
   | Closure (e, _) -> e ;;
 
 (* Helper function for evaluating unop *)
-let eval_unop (un : unop) (Env.Val e : Env.value) : expr = 
+let eval_unop (un : unop) (e : expr) : expr = 
   match un,e with 
   | Negate, Num i -> Num ((-1) * i)
   | Negate, Float f -> Float ((-1.0) *. f)
+  | Not, Bool b -> Bool (not b)
   | _,_ -> raise (EvalError "invalid unop operation \nmake sure to check types") ;;
 
 (* Helper function for evaluating binop *)
-let eval_binop (bi : binop) (Env.Val e1 : Env.value) (Env.Val e2 : Env.value) : expr =
+let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
   match bi,e1,e2 with 
   | Plus, Num i1, Num i2 -> Num (i1 + i2)
-  | Plus, Float i1, Float i2 -> Float (i1 +. i2)
+  | Plus, Float f1, Float f2 -> Float (f1 +. f2)
   | Minus, Num i1, Num i2 -> Num (i1 - i2)
-  | Minus, Float i1, Float i2 -> Float (i1 -. i2)
+  | Minus, Float f1, Float f2 -> Float (f1 -. f2)
   | Times, Num i1, Num i2 -> Num (i1 * i2)
-  | Times, Float i1, Float i2 -> Float (i1 *. i2)
+  | Times, Float f1, Float f2 -> Float (f1 *. f2)
   | Divide, Num i1, Num i2 -> Num (i1 / i2)
-  | Divide, Float i1, Float i2 -> Float (i1 /. i2)
+  | Divide, Float f1, Float f2 -> Float (f1 /. f2)
   | Modulo, Num i1, Num i2 -> Num (i1 mod i2)
   | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
   | Equals, Num i1, Num i2 -> if i1 = i2 then Bool true else Bool false
-  | Equals, Float i1, Float i2 -> 
+  | Equals, Float f1, Float f2 -> 
     (* checks for near equality *)
-    if abs_float (i1 -. i2) < 0.00001 then Bool true 
+    if abs_float (f1 -. f2) < 0.000001 then Bool true 
     else Bool false
   | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
-  | LessThan, Float i1, Float i2 -> if i1 < i2 then Bool true else Bool false
+  | LessThan, Float f1, Float f2 -> if f1 < f2 then Bool true else Bool false
+  | LessThanOrEqual, Num i1, Num i2 -> if i1 <= i2 then Bool true else Bool false
+  | LessThanOrEqual, Float f1, Float f2 -> if f1 <= f2 then Bool true else Bool false
+  | GreaterThan, Num i1, Num i2 -> if i1 > i2 then Bool true else Bool false
+  | GreaterThan, Float f1, Float f2 -> if f1 > f2 then Bool true else Bool false
+  | GreaterThanOrEqual, Num i1, Num i2 -> if i1 >= i2 then Bool true else Bool false
+  | GreaterThanOrEqual, Float f1, Float f2 -> if f1 >= f2 then Bool true else Bool false
   | _,_,_ -> raise (EvalError "invalid binop operation \nmake sure to check types") ;;
 
 
@@ -169,72 +176,76 @@ let curr_mod = ref Substitution ;;
 (* The UNIVERSAL evaluator -- essentially allows for any evaluation type *)
 let rec eval_uni (exp : expr) (env : Env.env) : Env.value =
   match exp with 
-  | Var v -> 
-    if !curr_mod = Substitution then raise (EvalError ("Unbound variable " ^ v))
-    else (
-      try 
-        match Env.lookup env v with 
-        | Env.Val new_exp -> Env.Val new_exp
-        | Env.Closure (new_exp, new_env) -> eval_uni new_exp new_env
-      with 
-        Not_found -> raise (EvalError ("Unbound variable " ^ v))
+  | Var v -> (
+      match !curr_mod with 
+      | Substitution -> raise (EvalError ("Unbound variable " ^ v))
+      | Dynamic | Lexical -> 
+        try 
+          match Env.lookup env v with 
+          | Env.Val new_exp -> Env.Val new_exp
+          | Env.Closure (new_exp, new_env) -> eval_uni new_exp new_env
+        with 
+          Not_found -> raise (EvalError ("Unbound variable " ^ v))
     )
   | Num _ | Float _ | Bool _ -> Env.Val exp 
   | Unassigned | Raise -> raise EvalException 
-  | Unop (un, e) -> Env.Val (eval_unop un (eval_uni e env))
-  | Binop (bi, e1, e2) -> Env.Val (eval_binop bi (eval_uni e1 env) (eval_uni e2 env))
+  | Unop (un, e) -> Env.Val (eval_unop un (val_to_expr (eval_uni e env)))
+  | Binop (bi, e1, e2) -> 
+    Env.Val (eval_binop bi (val_to_expr (eval_uni e1 env)) (val_to_expr (eval_uni e2 env)))
   | Conditional (e1, e2, e3) -> (
       match eval_uni e1 env with 
       | Env.Val (Bool true) -> eval_uni e2 env
       | Env.Val (Bool false) -> eval_uni e3 env
       | _ -> raise (EvalError "expecting bool but received something else")
     )
-  | Fun _ -> 
-    if !curr_mod = Lexical then Env.close exp env
-    else Env.Val exp
-  | Let (v, e1, e2) -> 
-    if !curr_mod = Substitution then eval_uni (subst v (val_to_expr (eval_uni e1 env)) e2) env
-    else (
-      let new_e1 = eval_uni e1 env in 
-      eval_uni e2 (Env.extend env v (ref new_e1))
+  | Fun _ -> (
+      match !curr_mod with 
+      | Substitution | Dynamic -> Env.Val exp
+      | Lexical -> Env.close exp env
     )
-  | Letrec (v, e1, e2) -> 
-    if !curr_mod = Substitution then 
-    (
-      let new_e1 = eval_uni (subst v (Letrec (v, e1, Var v)) e1) env in 
-      eval_uni (subst v (val_to_expr new_e1) e2) env
+  | Let (v, e1, e2) -> (
+      match !curr_mod with 
+      | Substitution -> eval_uni (subst v (val_to_expr (eval_uni e1 env)) e2) env
+      | Dynamic | Lexical -> let new_e1 = eval_uni e1 env in 
+        eval_uni e2 (Env.extend env v (ref new_e1))
     )
-    else (
-      let new_val = ref (Env.Val Unassigned) in
-      let new_env = Env.extend env v new_val in 
-      let new_e1 = eval_uni e1 new_env in 
-      match new_e1 with 
-      | Env.Val (Var _) -> raise (EvalError "hit variable")
-      | _ -> new_val :=  new_e1; eval_uni e2 new_env
+  | Letrec (v, e1, e2) -> (
+      match !curr_mod with 
+      | Substitution -> let new_e1 = eval_uni (subst v (Letrec (v, e1, Var v)) e1) env in 
+        eval_uni (subst v (val_to_expr new_e1) e2) env
+      | Dynamic | Lexical ->
+        let new_env = Env.extend env v (ref (Env.Val Unassigned)) in 
+        let new_e1 = eval_uni e1 new_env in 
+        (match new_e1 with 
+        | Env.Val (Var _) -> raise (EvalError "hit variable")
+        | _ -> eval_uni e2 (Env.extend new_env v (ref new_e1)))
     )
-  | App (e1, e2) -> 
-    if !curr_mod = Substitution then 
-    (
-      match eval_uni e1 env with 
-      | Env.Val (Fun (v, e)) -> eval_uni (subst v (val_to_expr (eval_uni e2 env)) e) env
-      | _ -> raise (EvalError "expected function but received something else")
-    )
-    else if !curr_mod = Dynamic then 
-    (
+  | App (e1, e2) -> (
       match eval_uni e1 env with 
       | Env.Val (Fun (v, e3)) -> 
-        let new_val = ref (eval_uni e2 env) in 
-        eval_uni e3 (Env.extend env v new_val)
-      | _ -> raise (EvalError "expected function but received something else")
-    )
-    else 
-    (
-      match eval_uni e1 env with 
+        if !curr_mod = Substitution 
+          then eval_uni (subst v (val_to_expr (eval_uni e2 env)) e3) env
+        else let new_val = ref (eval_uni e2 env) in 
+          eval_uni e3 (Env.extend env v new_val)
       | Env.Closure (Fun (v, e3), old_env) -> 
-        let new_val = ref (eval_uni e2 old_env) in 
-        eval_uni e3 (Env.extend old_env v new_val)
-      | _ -> raise (EvalError "expected function but received something else")
+          let new_val = ref (eval_uni e2 old_env) in 
+          eval_uni e3 (Env.extend old_env v new_val)
+      | _ -> raise (EvalError "expected function but received something else") 
     ) ;;
+
+
+(* Each specific function *)
+let eval_s (exp : expr) (env : Env.env) : Env.value =
+  curr_mod := Substitution;
+  eval_uni exp env ;;
+
+let eval_d (exp : expr) (env : Env.env) : Env.value =
+  curr_mod := Dynamic;
+  eval_uni exp env ;;
+
+let eval_l (exp : expr) (env : Env.env) : Env.value =
+  curr_mod := Lexical;
+  eval_uni exp env ;;
 
 
 

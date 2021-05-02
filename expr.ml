@@ -9,6 +9,7 @@
 
 type unop =
   | Negate
+  | Not
 ;;
     
 type binop =
@@ -19,6 +20,9 @@ type binop =
   | Modulo
   | Equals
   | LessThan
+  | LessThanOrEqual
+  | GreaterThan
+  | GreaterThanOrEqual
 ;;
 
 type varid = string ;;
@@ -139,7 +143,8 @@ let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
 (* Helper to-string methods *)
 let to_string_unop_concrete u : string = 
   match u with 
-  | Negate -> "~-" ;;
+  | Negate -> "~-" 
+  | Not -> " not " ;;
 
 let to_string_binop_concrete b : string = 
   match b with 
@@ -149,7 +154,10 @@ let to_string_binop_concrete b : string =
   | Divide -> " / "
   | Modulo -> " mod "
   | Equals -> " = "
-  | LessThan -> " < " ;;
+  | LessThan -> " < " 
+  | LessThanOrEqual -> " <= "
+  | GreaterThan -> " > "
+  | GreaterThanOrEqual -> " >= " ;;
 
 
 (* exp_to_concrete_string exp -- Returns a string representation of
@@ -185,7 +193,8 @@ let rec exp_to_concrete_string (exp : expr) : string =
 (* Helper to-string methods *)
 let to_string_unop_abstract u : string = 
   match u with 
-  | Negate -> "Negate" ;;
+  | Negate -> "Negate" 
+  | Not -> "Not" ;;
 
 let to_string_binop_abstract b : string = 
   match b with 
@@ -195,7 +204,10 @@ let to_string_binop_abstract b : string =
   | Divide -> "Divide"
   | Modulo -> "Modulo"
   | Equals -> "Equals"
-  | LessThan -> "LessThan" ;;
+  | LessThan -> "LessThan" 
+  | LessThanOrEqual -> "LessThanOrEqual"
+  | GreaterThan -> "GreaterThan"
+  | GreaterThanOrEqual -> "GreaterThanOrEqual" ;;
 
 
 (* exp_to_abstract_string exp -- Return a string representation of the

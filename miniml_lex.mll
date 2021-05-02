@@ -25,13 +25,18 @@
                        ("true", TRUE);
                        ("false", FALSE);
                        ("fun", FUNCTION);
-                       ("function", FUNCTION)
+                       ("function", FUNCTION);
+                       ("mod", MODULO);
+                       ("not", NOT)
                      ]
                      
   let sym_table = 
     create_hashtable 8 [
                        ("=", EQUALS);
                        ("<", LESSTHAN);
+                       ("<=", LESSTHANOREQUAL);
+                       (">", GREATERTHAN);
+                       (">=", GREATERTHANOREQUAL);
                        (".", DOT);
                        ("->", DOT);
                        (";;", EOF);
@@ -44,7 +49,6 @@
                        ("*.", TIMES);
                        ("/", DIVIDE);
                        ("/.", DIVIDE);
-                       ("%", MODULO);
                        ("(", OPEN);
                        (")", CLOSE)
                      ]
