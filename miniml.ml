@@ -46,7 +46,8 @@ let repl () =
         match res with
         | Val resexp ->
            printf "==> %s\n" (Ex.exp_to_abstract_string resexp)
-        | _ -> failwith "not handling other cases yet"
+        | Closure (exp, env) -> 
+          printf "==> %s with %s\n" (Ex.exp_to_concrete_string exp) (Ev.Env.env_to_string env)
       with
       | MP.Error -> printf "xx> parse error\n"
       | Ev.EvalError msg -> printf "xx> evaluation error: %s\n" msg

@@ -23,6 +23,10 @@ type binop =
   | LessThanOrEqual
   | GreaterThan
   | GreaterThanOrEqual
+  | Concat
+  | And 
+  | Or 
+  | ExclusiveOr 
 ;;
 
 type varid = string ;;
@@ -31,6 +35,7 @@ type expr =
   | Var of varid                         (* variables *)
   | Num of int                           (* integers *)
   | Float of float                       (* floats *)
+  | String of string                     (* strings *)
   | Bool of bool                         (* booleans *)
   | Unop of unop * expr                  (* unary operators *)
   | Binop of binop * expr * expr         (* binary operators *)
@@ -70,7 +75,7 @@ let vars_of_list : string list -> varidset =
 let rec free_vars (exp : expr) : varidset =
   match exp with
   | Var v -> SS.singleton v
-  | Num _ | Float _ | Bool _ | Raise | Unassigned -> SS.empty
+  | Num _ | Float _ | String _ | Bool _ | Raise | Unassigned -> SS.empty
   | Unop (_, e) -> free_vars e
   | Binop (_, e1, e2) -> SS.union (free_vars e1) (free_vars e2)
   | Conditional (e1, e2, e3) ->
@@ -109,7 +114,7 @@ let rec subst (var_name : varid) (repl : expr) (exp : expr) : expr =
   let rec subst' exp' = 
     match exp' with
     | Var v -> if v = var_name then repl else exp'
-    | Num _ | Float _ | Bool _ | Raise | Unassigned -> exp'
+    | Num _ | Float _ | String _ | Bool _ | Raise | Unassigned -> exp'
     | Unop (u, e) -> Unop (u, subst' e)
     | Binop (b, e1, e2) -> Binop (b, subst' e1, subst' e2)
     | Conditional (e1, e2, e3) -> Conditional (subst' e1, subst' e2, subst' e3)
@@ -157,7 +162,11 @@ let to_string_binop_concrete b : string =
   | LessThan -> " < " 
   | LessThanOrEqual -> " <= "
   | GreaterThan -> " > "
-  | GreaterThanOrEqual -> " >= " ;;
+  | GreaterThanOrEqual -> " >= "
+  | Concat -> " ^ " 
+  | And -> " && " 
+  | Or -> " || "
+  | ExclusiveOr -> " @@ " ;;
 
 
 (* exp_to_concrete_string exp -- Returns a string representation of
@@ -167,6 +176,7 @@ let rec exp_to_concrete_string (exp : expr) : string =
   | Var v -> v
   | Num i -> string_of_int i
   | Float f -> string_of_float f
+  | String str -> "\"" ^ str ^ "\"" 
   | Bool b -> string_of_bool b
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"
@@ -207,7 +217,11 @@ let to_string_binop_abstract b : string =
   | LessThan -> "LessThan" 
   | LessThanOrEqual -> "LessThanOrEqual"
   | GreaterThan -> "GreaterThan"
-  | GreaterThanOrEqual -> "GreaterThanOrEqual" ;;
+  | GreaterThanOrEqual -> "GreaterThanOrEqual"
+  | Concat -> "Concat" 
+  | And -> "And" 
+  | Or -> "Or"
+  | ExclusiveOr -> "ExclusiveOr" ;;
 
 
 (* exp_to_abstract_string exp -- Return a string representation of the
@@ -217,6 +231,7 @@ let rec exp_to_abstract_string (exp : expr) : string =
   | Var v -> "Var \"" ^ v ^ "\""
   | Num i -> "Num " ^ (string_of_int i)
   | Float f -> "Float " ^ (string_of_float f)
+  | String str -> "String \"" ^ str ^ "\"" 
   | Bool b -> "Bool " ^ (string_of_bool b)
   | Raise -> "Raise"
   | Unassigned -> "Unassigned"

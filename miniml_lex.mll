@@ -27,7 +27,7 @@
                        ("fun", FUNCTION);
                        ("function", FUNCTION);
                        ("mod", MODULO);
-                       ("not", NOT)
+                       ("not", NOT);
                      ]
                      
   let sym_table = 
@@ -50,7 +50,11 @@
                        ("/", DIVIDE);
                        ("/.", DIVIDE);
                        ("(", OPEN);
-                       (")", CLOSE)
+                       (")", CLOSE);
+                       ("^", CONCAT);
+                       ("&&", AND);
+                       ("||", OR);
+                       ("<>", EXCLUSIVEOR);
                      ]
 }
 
@@ -59,7 +63,10 @@ let digit = ['0'-'9']
 let float_digit = ['0'-'9'] ['.']*
 let id = ['a'-'z'] ['a'-'z' '0'-'9']*
 let sym = ['(' ')'] | (['$' '&' '*' '+' '-' '/' '=' '<' '>' '^'
-                            '.' '~' ';' '!' '?' '%' ':' '#']+)
+                            '.' '~' ';' '!' '?' '%' ':' '#' '|']+)
+let strings = ['"'] [^ '"']* ['"']
+let hexes = ['0'] ['x'] ['A'-'F' 'a'-'f' '0'-'9']+
+
 
 rule token = parse
   | digit+ as inum
@@ -84,6 +91,14 @@ rule token = parse
           with Not_found ->
             printf "Ignoring unrecognized token: %s\n" symbol;
             token lexbuf
+        }
+  | strings as str 
+        {
+          STRING (String.sub str 1 (String.length str - 2))
+        }
+  | hexes as hex 
+        { let h = int_of_string hex in
+          INT h
         }
   | '{' [^ '\n']* '}'   { token lexbuf }    (* skip one-line comments *)
   | [' ' '\t' '\n']     { token lexbuf }    (* skip whitespace *)

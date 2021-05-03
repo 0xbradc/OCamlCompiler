@@ -21,15 +21,22 @@
 %token <string> ID
 %token <int> INT 
 %token <float> FLOAT 
+%token <string> STRING
 %token TRUE FALSE
 %token NOT
+%token CONCAT
+%token AND 
+%token OR 
+%token EXCLUSIVEOR
 
 %nonassoc IF
-%left LESSTHAN EQUALS
+%left LESSTHAN GREATERTHAN LESSTHANOREQUAL GREATERTHANOREQUAL EQUALS
+%left AND OR EXCLUSIVEOR
 %left MODULO
 %left PLUS MINUS
 %left TIMES DIVIDE
-%nonassoc NEG
+%left CONCAT
+%nonassoc NEG NOT
 
 %start input
 %type <Expr.expr> input
@@ -43,6 +50,7 @@ exp:    exp expnoapp            { App($1, $2) }
 
 expnoapp: INT                   { Num $1 }
         | FLOAT                 { Float $1 }
+        | STRING                { String $1 }
         | TRUE                  { Bool true }
         | FALSE                 { Bool false }
         | ID                    { Var $1 }
@@ -56,6 +64,10 @@ expnoapp: INT                   { Num $1 }
         | exp GREATERTHAN exp           { Binop(GreaterThan, $1, $3) }
         | exp LESSTHANOREQUAL exp       { Binop(LessThanOrEqual, $1, $3) }
         | exp GREATERTHANOREQUAL exp    { Binop(GreaterThanOrEqual, $1, $3) }
+        | exp CONCAT exp                { Binop(Concat, $1, $3) }
+        | exp AND exp                   { Binop(And, $1, $3) }
+        | exp OR exp                    { Binop(Or, $1, $3) }
+        | exp EXCLUSIVEOR exp           { Binop(ExclusiveOr, $1, $3) }
         | NEG exp               { Unop(Negate, $2) }
         | NOT exp               { Unop(Not, $2) }
         | IF exp THEN exp ELSE exp      { Conditional($2, $4, $6) }

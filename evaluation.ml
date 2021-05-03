@@ -77,19 +77,19 @@ module Env : ENV =
     let extend (env : env) (varname : varid) (loc : value ref) : env =
       (varname, loc) :: (List.remove_assoc varname env) ;;
 
-    let env_to_string (env : env) : string =
+    let rec env_to_string (env : env) : string =
       let str = ref "" in 
-      List.iter (fun (var,_) -> str := (!str ^ var ^ " = NEED TO COMPLETE THIS PART; ")) env ;
-      "E{" ^ !str ^ "}" ;; 
+      List.iter (fun (v, e) -> str := (!str ^ v ^ " -> " ^ (value_to_string !e) ^ "; ")) env ;
+      "E{" ^ !str ^ "}" 
 
-    let value_to_string ?(printenvp : bool = true) (v : value) : string =
+    and value_to_string ?(printenvp : bool = true) (v : value) : string =
       match v with
-      | Val exp -> "Val: " ^ (exp_to_concrete_string exp)
+      | Val exp -> "Val(" ^ (exp_to_concrete_string exp) ^ ")\n"
       | Closure (exp, env) -> 
-        "Closure: " ^ (exp_to_concrete_string exp) ^ (
-          if printenvp then " in env: " ^ (env_to_string env) ^ ")" 
+        "Closure(" ^ (exp_to_concrete_string exp) ^ (
+          if printenvp then ", " ^ (env_to_string env) ^ ")" 
           else ""
-        ) ;;
+        ) ^ ")\n" ;;
   end
 ;;
 
@@ -117,13 +117,12 @@ module Env : ENV =
 (* The TRIVIAL EVALUATOR, which leaves the expression to be evaluated
    essentially unchanged, just converted to a value for consistency
    with the signature of the evaluators. *)
-   
 let eval_t (exp : expr) (_env : Env.env) : Env.value =
   (* coerce the expr, unchanged, into a value *)
   Env.Val exp ;;
 
 
-(* Converts an Env.value to an expr for use in subst *)
+(* Converts an Env.value to an expr *)
 let val_to_expr (v : Env.value) : expr = 
   match v with 
   | Val e -> e 
@@ -149,28 +148,29 @@ let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
   | Divide, Num i1, Num i2 -> Num (i1 / i2)
   | Divide, Float f1, Float f2 -> Float (f1 /. f2)
   | Modulo, Num i1, Num i2 -> Num (i1 mod i2)
-  | Equals, Bool i1, Bool i2 -> if i1 = i2 then Bool true else Bool false
-  | Equals, Num i1, Num i2 -> if i1 = i2 then Bool true else Bool false
-  | Equals, Float f1, Float f2 -> 
-    (* checks for near equality *)
-    if abs_float (f1 -. f2) < 0.000001 then Bool true 
-    else Bool false
-  | LessThan, Num i1, Num i2 -> if i1 < i2 then Bool true else Bool false
-  | LessThan, Float f1, Float f2 -> if f1 < f2 then Bool true else Bool false
-  | LessThanOrEqual, Num i1, Num i2 -> if i1 <= i2 then Bool true else Bool false
-  | LessThanOrEqual, Float f1, Float f2 -> if f1 <= f2 then Bool true else Bool false
-  | GreaterThan, Num i1, Num i2 -> if i1 > i2 then Bool true else Bool false
-  | GreaterThan, Float f1, Float f2 -> if f1 > f2 then Bool true else Bool false
-  | GreaterThanOrEqual, Num i1, Num i2 -> if i1 >= i2 then Bool true else Bool false
-  | GreaterThanOrEqual, Float f1, Float f2 -> if f1 >= f2 then Bool true else Bool false
+  | Equals, Bool b1, Bool b2 -> Bool (b1 = b2)
+  | Equals, Num i1, Num i2 -> Bool (i1 = i2)
+  | Equals, Float f1, Float f2 -> (* checks for near float equality *)
+    Bool ((abs_float (f1 -. f2)) < 0.000001)
+  | Equals, String s1, String s2 -> Bool (s1 = s2)
+  | LessThan, Num i1, Num i2 -> Bool (i1 < i2)
+  | LessThan, Float f1, Float f2 -> Bool (f1 < f2)
+  | LessThanOrEqual, Num i1, Num i2 -> Bool (i1 <= i2)
+  | LessThanOrEqual, Float f1, Float f2 -> Bool (f1 <= f2)
+  | GreaterThan, Num i1, Num i2 -> Bool (i1 > i2)
+  | GreaterThan, Float f1, Float f2 -> Bool (f1 > f2)
+  | GreaterThanOrEqual, Num i1, Num i2 -> Bool (i1 >= i2)
+  | GreaterThanOrEqual, Float f1, Float f2 -> Bool (f1 >= f2)
+  | Concat, String s1, String s2 -> String (s1 ^ s2)
+  | And, Bool b1, Bool b2 -> Bool (b1 && b2)
+  | Or, Bool b1, Bool b2 -> Bool (b1 || b2)
+  | ExclusiveOr, Bool b1, Bool b2 -> Bool (b1 <> b2)
   | _,_,_ -> raise (EvalError "invalid binop operation \nmake sure to check types") ;;
-
 
 (* Used to keep track of which model to use *)
 type model = Substitution | Dynamic | Lexical ;;
-(* Semantics model we are currently using. 
-   Set to Substitution by default. *)
-let curr_mod = ref Substitution ;;
+(* Semantics model we are currently using *)
+let curr_mod = ref Dynamic ;;
 
 
 (* The UNIVERSAL evaluator -- essentially allows for any evaluation type *)
@@ -179,15 +179,16 @@ let rec eval_uni (exp : expr) (env : Env.env) : Env.value =
   | Var v -> (
       match !curr_mod with 
       | Substitution -> raise (EvalError ("Unbound variable " ^ v))
-      | Dynamic | Lexical -> 
-        try 
-          match Env.lookup env v with 
-          | Env.Val new_exp -> Env.Val new_exp
-          | Env.Closure (new_exp, new_env) -> eval_uni new_exp new_env
-        with 
-          Not_found -> raise (EvalError ("Unbound variable " ^ v))
+      | Dynamic -> (
+          try eval_uni (val_to_expr (Env.lookup env v)) env
+          with Not_found -> raise (EvalError ("Unbound variable " ^ v))
+        )
+      | Lexical -> (
+          try Env.lookup env v
+          with Not_found -> raise (EvalError ("Unbound variable " ^ v))
+        )
     )
-  | Num _ | Float _ | Bool _ -> Env.Val exp 
+  | Num _ | Float _ | String _ | Bool _ -> Env.Val exp 
   | Unassigned | Raise -> raise EvalException 
   | Unop (un, e) -> Env.Val (eval_unop un (val_to_expr (eval_uni e env)))
   | Binop (bi, e1, e2) -> 
@@ -206,21 +207,24 @@ let rec eval_uni (exp : expr) (env : Env.env) : Env.value =
   | Let (v, e1, e2) -> (
       match !curr_mod with 
       | Substitution -> eval_uni (subst v (val_to_expr (eval_uni e1 env)) e2) env
-      | Dynamic | Lexical -> let new_e1 = eval_uni e1 env in 
+      | Dynamic | Lexical -> 
+        let new_e1 = eval_uni e1 env in 
         eval_uni e2 (Env.extend env v (ref new_e1))
     )
   | Letrec (v, e1, e2) -> (
       match !curr_mod with 
-      | Substitution -> let new_e1 = eval_uni (subst v (Letrec (v, e1, Var v)) e1) env in 
+      | Substitution ->
+        let new_e1 = eval_uni (subst v (Letrec (v, e1, Var v)) e1) env in 
         eval_uni (subst v (val_to_expr new_e1) e2) env
       | Dynamic | Lexical ->
-        let new_env = Env.extend env v (ref (Env.Val Unassigned)) in 
+        let temp_spot = ref (Env.Val Unassigned) in
+        let new_env = Env.extend env v (temp_spot) in 
         let new_e1 = eval_uni e1 new_env in 
         (match new_e1 with 
-        | Env.Val (Var _) -> raise (EvalError "hit variable")
-        | _ -> eval_uni e2 (Env.extend new_env v (ref new_e1)))
+        | Env.Val (Var _) -> raise (EvalError "unexpectedly hit variable")
+        | _ -> temp_spot := new_e1; eval_uni e2 new_env)
     )
-  | App (e1, e2) -> (
+  | App (e1, e2) ->
       match eval_uni e1 env with 
       | Env.Val (Fun (v, e3)) -> 
         if !curr_mod = Substitution 
@@ -228,10 +232,9 @@ let rec eval_uni (exp : expr) (env : Env.env) : Env.value =
         else let new_val = ref (eval_uni e2 env) in 
           eval_uni e3 (Env.extend env v new_val)
       | Env.Closure (Fun (v, e3), old_env) -> 
-          let new_val = ref (eval_uni e2 old_env) in 
+          let new_val = ref (eval_uni e2 env) in 
           eval_uni e3 (Env.extend old_env v new_val)
-      | _ -> raise (EvalError "expected function but received something else") 
-    ) ;;
+      | _ -> raise (EvalError "expected function but received something else") ;;
 
 
 (* Each specific function *)
@@ -249,7 +252,6 @@ let eval_l (exp : expr) (env : Env.env) : Env.value =
 
 
 
-
 (* Connecting the evaluators to the external world. The REPL in
    `miniml.ml` uses a call to the single function `evaluate` defined
    here. Initially, `evaluate` is the trivial evaluator `eval_t`. But
@@ -258,22 +260,22 @@ let eval_l (exp : expr) (env : Env.env) : Env.value =
    above, not the `evaluate` function, so it doesn't matter how it's
    set when you submit your solution.) *)
 
-(* let evaluate = 
-  match !current with 
+let evaluate = 
+  match !curr_mod with 
   | Substitution -> eval_s
   | Dynamic -> eval_d
-  | Lexical -> eval_l
-  | Extended -> eval_e
-  | Nil -> raise EvalException ;;  *)
+  | Lexical -> eval_l ;; 
 
-let evaluate = 
-  (* User defines the semantic type *)
+
+(* User-friendly alternative to evaluate. This is detailed in section 8 of my writeup. *)
+(* let alternative_evaluate = 
   let preference = 
-      print_string ("\nPlease enter a valid semantics model and press enter:\n" ^
-        "(\"s\" for substitution, \"d\" for dynamic, \"l\" for lexical) \n" ^ 
-        "Invalid inputs will result in Substitution being chosen. \n"); 
+      print_string ("\n\nPlease enter a valid semantics model and press enter:\n" ^
+        "\"s\" for substitution, \"d\" for dynamic, \"l\" for lexical. \n" ^ 
+        "(invalid inputs will result in Substitution being chosen) \n"); 
       read_line ()
   in 
-  if preference = "d" then curr_mod := Dynamic 
-  else if preference = "l" then curr_mod := Lexical;
-  eval_uni ;;
+  if preference = "d" then (curr_mod := Dynamic; print_string "\nDYNAMIC MODEL\n\n")
+  else if preference = "l" then (curr_mod := Lexical; print_string "\nLEXICAL MODEL\n\n")
+  else print_string "\nSUBSTITUTION MODEL\n\n" ;
+  eval_uni ;; *)

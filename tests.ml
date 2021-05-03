@@ -4,7 +4,7 @@ open Absbook ;;
 open Expr ;;
 (* Make evaluation solution available for testing *)
 open Evaluation ;;
-
+(* Used for the str_to_exp function *)
 open Miniml ;;
 
 
@@ -16,7 +16,19 @@ let test_lists (f : 'a -> 'b) (tester_lst : expr list) (answer_lst : 'b list) =
         )
         tester_lst 
         answer_lst 
-    with _ -> raise (EvalError "test list lengths do not match") ;;
+    with _ -> raise (EvalError "test failed for some reason") ;;
+let test_tuple_lists (f : expr -> Env.env -> Env.value) 
+                     (tester_lst : string list) 
+                     (answer_lst : 'b list) =
+    try List.iter2 
+        (fun elem1 elem2 -> 
+            unit_test 
+                ((f (str_to_exp elem1) (Env.empty ())) = (Env.Val elem2))
+                (elem1 ^ "\n --> " ^ (exp_to_concrete_string elem2))
+        )
+        tester_lst 
+        answer_lst 
+    with _ -> raise (EvalError "test failed for some reason") ;;
 
 
 let test_exp_to_concrete_string () =
@@ -199,6 +211,21 @@ let test_subst () =
     with _ -> raise (EvalError "test list lengths do not match") ;;
 
 
+(* Used in the following eval testers *)
+let eval_tester_lst = [
+    ("1 ;;");
+    ("1. ;;");
+    ("true ;;");
+    ("~-1 ;;");
+    ("1 + 10 ;;");
+    ("if true then 42 else 21 ;;");
+    ("let x = 2 in x ;;");
+    ("let rec x = 3 in x ;;");
+    ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;");
+    ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;");
+] ;;
+
+
 let test_eval_s () = 
     (* Using try-with because these are supposed to throw errors/exceptions *)
     try let _ = eval_s (Var "x") (Env.empty ()) in print_string "Var is unbound FAILED\n" 
@@ -208,22 +235,6 @@ let test_eval_s () =
     try let _ = eval_s Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
     with _ -> print_string "Unassigned passed\n";
 
-    (* For these tests, I utilized the str_to_exp function to emulate command line input *)
-    let tester_lst = [
-        ("1 ;;", (Env.empty ()));
-        ("1. ;;", (Env.empty ()));
-        ("true ;;", (Env.empty ()));
-        ("~-1 ;;", (Env.empty ()));
-        ("1 + 10 ;;", (Env.empty ()));
-        ("if true then 42 else 21 ;;", (Env.empty ()));
-        ("fun x -> 1 ;;", (Env.empty ()));
-        ("let x = 2 in x ;;", (Env.empty ()));
-        ("let rec x = 3 in x ;;", (Env.empty ()));
-        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
-        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
-        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
-        ("42 mod 10 ;;", (Env.empty ()))
-    ] in 
     let answer_lst = [
         (Num 1);
         (Float 1.);
@@ -231,23 +242,12 @@ let test_eval_s () =
         (Num ~-1);
         (Num 11);
         (Num 42);
-        (Fun ("x", Num 1));
         (Num 2);
         (Num 3);
         (Num 6);
-        (* (Num 8); *)
-        (Num 4);
-        (Num 2)
+        (Num 4)
     ] in 
-    try List.iter2 
-        (fun (elem1a, elem1b) elem2 -> 
-            unit_test 
-                ((eval_s (str_to_exp elem1a) elem1b) = (Env.Val elem2)) 
-                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
-        )
-        tester_lst 
-        answer_lst 
-    with _ -> raise (EvalError "eval_s failed for some reason") ;;
+    test_tuple_lists eval_s eval_tester_lst answer_lst ;;
 
 
 let test_eval_d () = 
@@ -259,21 +259,6 @@ let test_eval_d () =
     try let _ = eval_d Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
     with _ -> print_string "Unassigned passed\n";
 
-    let tester_lst = [
-        ("1 ;;", (Env.empty ()));
-        ("1. ;;", (Env.empty ()));
-        ("true ;;", (Env.empty ()));
-        ("~-1 ;;", (Env.empty ()));
-        ("1 + 10 ;;", (Env.empty ()));
-        ("if true then 42 else 21 ;;", (Env.empty ()));
-        ("fun x -> 1 ;;", (Env.empty ()));
-        ("let x = 2 in x ;;", (Env.empty ()));
-        ("let rec x = 3 in x ;;", (Env.empty ()));
-        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
-        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
-        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
-        ("42 mod 10 ;;", (Env.empty ()))
-    ] in 
     let answer_lst = [
         (Num 1);
         (Float 1.);
@@ -281,23 +266,12 @@ let test_eval_d () =
         (Num ~-1);
         (Num 11);
         (Num 42);
-        (Fun ("x", Num 1));
         (Num 2);
         (Num 3);
         (Num 6);
-        (* (Num 8); *)
-        (Num 5);
-        (Num 2)
+        (Num 5)
     ] in 
-    try List.iter2 
-        (fun (elem1a, elem1b) elem2 -> 
-            unit_test 
-                ((eval_d (str_to_exp elem1a) elem1b) = (Env.Val elem2))
-                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
-        )
-        tester_lst 
-        answer_lst 
-    with _ -> raise (EvalError "eval_d failed for some reason") ;;
+    test_tuple_lists eval_d eval_tester_lst answer_lst ;;
 
 
 let test_eval_l () = 
@@ -309,21 +283,6 @@ let test_eval_l () =
     try let _ = eval_l Unassigned (Env.empty ()) in print_string "Unassigned FAILED\n" 
     with _ -> print_string "Unassigned passed\n";
 
-    let tester_lst = [
-        ("1 ;;", (Env.empty ()));
-        ("1. ;;", (Env.empty ()));
-        ("true ;;", (Env.empty ()));
-        ("~-1 ;;", (Env.empty ()));
-        ("1 + 10 ;;", (Env.empty ()));
-        ("if true then 42 else 21 ;;", (Env.empty ()));
-        ("fun x -> 1 ;;", (Env.empty ()));
-        ("let x = 2 in x ;;", (Env.empty ()));
-        ("let rec x = 3 in x ;;", (Env.empty ()));
-        ("let rec f = fun x -> if x = 0 then 1 else x * f (x - 1) in f 3 ;;", (Env.empty ()));
-        (* ("fun x -> x + 4 in 4 ;;", (Env.empty ())); *)
-        ("let x = 1 in let f = fun y -> x + y in let x = 2 in f 3 ;;", (Env.empty ()));
-        ("42 mod 10 ;;", (Env.empty ()))
-    ] in 
     let answer_lst = [
         (Num 1);
         (Float 1.);
@@ -331,23 +290,81 @@ let test_eval_l () =
         (Num ~-1);
         (Num 11);
         (Num 42);
-        (Fun ("x", Num 1));
         (Num 2);
         (Num 3);
         (Num 6);
-        (* (Num 8); *)
-        (Num 4);
-        (Num 2)
+        (Num 4)
     ] in 
-    try List.iter2 
-        (fun (elem1a, elem1b) elem2 -> 
-            unit_test 
-                ((eval_l (str_to_exp elem1a) elem1b) = (Env.Val elem2))
-                (elem1a ^ "\n --> " ^ (exp_to_concrete_string elem2))
-        )
-        tester_lst 
-        answer_lst 
-    with _ -> raise (EvalError "eval_l failed for some reason") ;;
+    test_tuple_lists eval_l eval_tester_lst answer_lst ;;
+
+let test_extensions () = 
+    let tester_lst = [
+        ("42. ;;");
+        ("42 / 10 ;;");
+        ("42. /. 10. ;;");
+        ("42 mod 10 ;;");
+        ("10 mod 42 ;;");
+        ("42 <= 42 ;;");
+        ("42 <= 43 ;;");
+        ("43 <= 42 ;;");
+        ("42 > 42 ;;");
+        ("42 > 43 ;;");
+        ("43 > 42 ;;");
+        ("42 >= 42 ;;");
+        ("42 >= 43 ;;");
+        ("43 >= 42 ;;");
+        ("not true ;;");
+        ("not false ;;");
+        ("not not true ;;");
+        ("true && true ;;");
+        ("true && false ;;");
+        ("false && false ;;");
+        ("true || true ;;");
+        ("true || false ;;");
+        ("false || false ;;");
+        ("true <> true ;;");
+        ("true <> false ;;");
+        ("false <> false ;;");
+        ("\"hello, world\" ;;");
+        ("\"hello\" ^ \", world\" ;;");
+        ("0xFA ;;");
+        ("0xfa ;;");
+        ("0xfa * 0xFA ;;")
+    ] in 
+    let answer_lst = [
+        (Float 42.);
+        (Num 4);
+        (Float 4.2);
+        (Num 2);
+        (Num 10);
+        (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool false);
+        (Bool false);
+        (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool true);
+        (Bool false);
+        (Bool true);
+        (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool false);
+        (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool false);
+        (Bool true);
+        (Bool false);
+        (String "hello, world");
+        (String "hello, world");
+        (Num 250);
+        (Num 250);
+        (Num 62500)
+    ] in 
+    test_tuple_lists eval_s tester_lst answer_lst ;;
 
 
 let tests () = 
@@ -368,6 +385,8 @@ let tests () =
     test_eval_d () ;
     print_string "\neval_l tests\n" ;
     test_eval_l () ;
+    print_string "\nextensions tests\n" ;
+    test_extensions () ;
     print_newline () ;
     () ;;
 
