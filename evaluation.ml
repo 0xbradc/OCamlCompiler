@@ -92,8 +92,7 @@ module Env : ENV =
           if printenvp then ", " ^ (env_to_string env) 
           else ""
         ) ^ ")\n" ;;
-  end
-;;
+  end ;;
 
 
 (*......................................................................
@@ -115,13 +114,6 @@ module Env : ENV =
   against our unit tests relies on their having these signatures. If
   you want to implement an extension whose evaluator has a different
   signature, implement it as `eval_e` below.  *)
-
-(* The TRIVIAL EVALUATOR, which leaves the expression to be evaluated
-   essentially unchanged, just converted to a value for consistency
-   with the signature of the evaluators. *)
-let eval_t (exp : expr) (_env : Env.env) : Env.value =
-  (* coerce the expr, unchanged, into a value *)
-  Env.Val exp ;;
 
 
 (* Converts an Env.value to an expr *)
@@ -153,7 +145,7 @@ let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
   | Equals, Bool b1, Bool b2 -> Bool (b1 = b2)
   | Equals, Num i1, Num i2 -> Bool (i1 = i2)
   | Equals, Float f1, Float f2 -> (* checks for near float equality *)
-    Bool ((abs_float (f1 -. f2)) < 0.000001)
+                                  Bool ((abs_float (f1 -. f2)) < 0.000001)
   | Equals, String s1, String s2 -> Bool (s1 = s2)
   | LessThan, Num i1, Num i2 -> Bool (i1 < i2)
   | LessThan, Float f1, Float f2 -> Bool (f1 < f2)
@@ -240,6 +232,10 @@ let rec eval_uni (exp : expr) (env : Env.env) : Env.value =
 
 
 (* Each specific function *)
+let eval_t (exp : expr) (_env : Env.env) : Env.value =
+  (* coerce the expr, unchanged, into a value *)
+  Env.Val exp ;;
+
 let eval_s (exp : expr) (env : Env.env) : Env.value =
   curr_mod := Substitution;
   eval_uni exp env ;;
@@ -252,16 +248,12 @@ let eval_l (exp : expr) (env : Env.env) : Env.value =
   curr_mod := Lexical;
   eval_uni exp env ;;
 
+let eval_e (_exp : expr) (_env : Env.env) : Env.value =
+  raise (EvalError "eval_e not implemented") ;;
 
 
-(* Connecting the evaluators to the external world. The REPL in
-   `miniml.ml` uses a call to the single function `evaluate` defined
-   here. Initially, `evaluate` is the trivial evaluator `eval_t`. But
-   you can define it to use any of the other evaluators as you proceed
-   to implement them. (We will directly unit test the four evaluators
-   above, not the `evaluate` function, so it doesn't matter how it's
-   set when you submit your solution.) *)
-
+(* Evaluate method used in miniml.ml.
+   This is set to eval_s by default. *)
 let evaluate = 
   eval_s ;; 
 
