@@ -72,14 +72,16 @@ module Env : ENV =
 
     let lookup (env : env) (varname : varid) : value =
       try !(List.assoc varname env)
-      with _ -> raise (EvalError ("Variable \"" ^ varname ^ "\" does not exist in the environment")) ;;
+      with _ -> raise (EvalError ("Variable \"" ^ varname ^ 
+        "\" does not exist in the environment")) ;;
 
     let extend (env : env) (varname : varid) (loc : value ref) : env =
       (varname, loc) :: (List.remove_assoc varname env) ;;
 
     let rec env_to_string (env : env) : string =
       let str = ref "" in 
-      List.iter (fun (v, e) -> str := (!str ^ v ^ " -> " ^ (value_to_string !e) ^ "; ")) env ;
+      List.iter (fun (v, e) -> 
+        str := (!str ^ v ^ " -> " ^ (value_to_string !e) ^ "; ")) env ;
       "E{" ^ !str ^ "}" 
 
     and value_to_string ?(printenvp : bool = true) (v : value) : string =
@@ -87,7 +89,7 @@ module Env : ENV =
       | Val exp -> "Val(" ^ (exp_to_concrete_string exp) ^ ")\n"
       | Closure (exp, env) -> 
         "Closure(" ^ (exp_to_concrete_string exp) ^ (
-          if printenvp then ", " ^ (env_to_string env) ^ ")" 
+          if printenvp then ", " ^ (env_to_string env) 
           else ""
         ) ^ ")\n" ;;
   end
@@ -170,7 +172,7 @@ let eval_binop (bi : binop) (e1 : expr) (e2 : expr) : expr =
 (* Used to keep track of which model to use *)
 type model = Substitution | Dynamic | Lexical ;;
 (* Semantics model we are currently using *)
-let curr_mod = ref Dynamic ;;
+let curr_mod = ref Substitution ;;
 
 
 (* The UNIVERSAL evaluator -- essentially allows for any evaluation type *)
@@ -261,21 +263,5 @@ let eval_l (exp : expr) (env : Env.env) : Env.value =
    set when you submit your solution.) *)
 
 let evaluate = 
-  match !curr_mod with 
-  | Substitution -> eval_s
-  | Dynamic -> eval_d
-  | Lexical -> eval_l ;; 
+  eval_s ;; 
 
-
-(* User-friendly alternative to evaluate. This is detailed in section 8 of my writeup. *)
-(* let alternative_evaluate = 
-  let preference = 
-      print_string ("\n\nPlease enter a valid semantics model and press enter:\n" ^
-        "\"s\" for substitution, \"d\" for dynamic, \"l\" for lexical. \n" ^ 
-        "(invalid inputs will result in Substitution being chosen) \n"); 
-      read_line ()
-  in 
-  if preference = "d" then (curr_mod := Dynamic; print_string "\nDYNAMIC MODEL\n\n")
-  else if preference = "l" then (curr_mod := Lexical; print_string "\nLEXICAL MODEL\n\n")
-  else print_string "\nSUBSTITUTION MODEL\n\n" ;
-  eval_uni ;; *)

@@ -9,7 +9,7 @@ open Miniml ;;
 
 
 (* Used for more efficient testing below *)
-let test_lists (f : 'a -> 'b) (tester_lst : expr list) (answer_lst : 'b list) = 
+let test_lists (f : expr -> 'b) (tester_lst : expr list) (answer_lst : 'b list) = 
     try List.iter2 
         (fun elem1 elem2 -> 
             unit_test ((f elem1) = elem2) (exp_to_abstract_string elem1)
@@ -329,7 +329,8 @@ let test_extensions () =
         ("\"hello\" ^ \", world\" ;;");
         ("0xFA ;;");
         ("0xfa ;;");
-        ("0xfa * 0xFA ;;")
+        ("0xfa * 0xFA ;;");
+        ("0xfa / 0xF ;;")
     ] in 
     let answer_lst = [
         (Float 42.);
@@ -362,16 +363,16 @@ let test_extensions () =
         (String "hello, world");
         (Num 250);
         (Num 250);
-        (Num 62500)
+        (Num 62500);
+        (Num 16)
     ] in 
     test_tuple_lists eval_s tester_lst answer_lst ;;
 
 
 let tests () = 
-    print_string "\nexp_to_concrete_string tests\n";
+    print_string "\nexp_to_concrete_string tests\n" ;
     test_exp_to_concrete_string () ;
-    print_newline () ;
-    print_string "\nexp_to_abstract_string tests\n";
+    print_string "\nexp_to_abstract_string tests\n" ;
     test_exp_to_abstract_string () ;
     print_string "\nnew_varname tests\n" ;
     test_new_varname () ;
