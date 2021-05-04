@@ -1,5 +1,11 @@
 (* This file was created to store the alternative user-friendly approach I thought of.
    Refer to section 10 "User Friendly Extension" for more information on this approach. *)
+open Evaluation ;;
+
+(* Used to keep track of which model to use *)
+type model = Substitution | Dynamic | Lexical ;;
+(* Semantics model we are currently using *)
+let curr_mod = ref Substitution ;;
 
 
 let evaluate = 
