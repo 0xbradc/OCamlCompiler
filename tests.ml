@@ -211,6 +211,43 @@ let test_subst () =
     with _ -> raise (EvalError "test list lengths do not match") ;;
 
 
+let test_env () = 
+    let empty_env = Env.empty () in 
+    let full_env = (Env.extend (Env.empty ()) "x" (ref (Env.Val (Num 42)))) in 
+
+    try let _ = (Env.lookup empty_env "x")
+        in print_string "lookup x in empty environment FAILED\n"
+    with _ -> print_string "lookup x in empty environment passed\n" ;
+    unit_test 
+        ((Env.lookup full_env "x") = (Env.Val (Num 42)))
+        "lookup and extend" ;
+    try let _ = (Env.lookup full_env "y")
+        in print_string "lookup wrong variable FAILED\n"
+    with _ -> print_string "lookup wrong variable passed\n" ;
+    unit_test 
+        ((Env.env_to_string empty_env) = "E{}")
+        "env_to_string on empty environment" ;
+    unit_test 
+        ((Env.env_to_string full_env) = "E{x -> 42; }")
+        "env_to_string with variable x = 42" ;
+    unit_test 
+        ((Env.value_to_string (Env.Val (Float 42.)))
+            = "42.")
+        "value_to_string with Env.Val (Float 42.)" ;
+    unit_test 
+        ((Env.value_to_string (Env.Val (Fun ("x", Num 42))))
+            = "(fun x -> 42)")
+        "value_to_string with Env.Val (Fun (\"x\", Num 42))" ;
+    unit_test 
+        ((Env.value_to_string (Env.Closure (Float 42., empty_env)))
+            = "Closure (42., E{})")
+        "value_to_string with Env.Closure (Float 42., Env.empty ())" ;
+    unit_test 
+        ((Env.value_to_string (Env.Closure (Float 42., full_env)))
+            = "Closure (42., E{x -> 42; })")
+        "value_to_string with Env.Closure (Float 42., full_env)" ;;
+
+
 (* Used in the following eval testers *)
 let eval_tester_lst = [
     ("1 ;;");
@@ -380,6 +417,8 @@ let tests () =
     test_free_vars () ;
     print_string "\nsubst tests\n" ;
     test_subst () ;
+    print_string "\nEnv Module tests\n" ;
+    test_env () ;
     print_string "\neval_s tests\n" ;
     test_eval_s () ;
     print_string "\neval_d tests\n" ;

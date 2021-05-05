@@ -86,12 +86,12 @@ module Env : ENV =
 
     and value_to_string ?(printenvp : bool = true) (v : value) : string =
       match v with
-      | Val exp -> "Val(" ^ (exp_to_concrete_string exp) ^ ")\n"
+      | Val exp -> (exp_to_concrete_string exp)
       | Closure (exp, env) -> 
-        "Closure(" ^ (exp_to_concrete_string exp) ^ (
+        "Closure (" ^ (exp_to_concrete_string exp) ^ (
           if printenvp then ", " ^ (env_to_string env) 
           else ""
-        ) ^ ")\n" ;;
+        ) ^ ")" ;;
   end ;;
 
 
