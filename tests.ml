@@ -341,15 +341,31 @@ let test_extensions () =
         ("42. /. 10. ;;");
         ("42 mod 10 ;;");
         ("10 mod 42 ;;");
+
         ("42 <= 42 ;;");
         ("42 <= 43 ;;");
         ("43 <= 42 ;;");
+        ("true <= true ;;");
+        ("false <= true ;;");
+        ("true <= false ;;");
+        ("true <= true ;;");
+
         ("42 > 42 ;;");
         ("42 > 43 ;;");
         ("43 > 42 ;;");
+        ("false > false ;;");
+        ("false > true ;;");
+        ("true > false ;;");
+        ("true > true ;;");
+
         ("42 >= 42 ;;");
         ("42 >= 43 ;;");
         ("43 >= 42 ;;");
+        ("false >= false ;;");
+        ("false >= true ;;");
+        ("true >= false ;;");
+        ("true >= true ;;");
+
         ("not true ;;");
         ("not false ;;");
         ("not not true ;;");
@@ -375,15 +391,31 @@ let test_extensions () =
         (Float 4.2);
         (Num 2);
         (Num 10);
-        (Bool true);
-        (Bool true);
-        (Bool false);
-        (Bool false);
-        (Bool false);
+
         (Bool true);
         (Bool true);
         (Bool false);
         (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool true);
+
+        (Bool false);
+        (Bool false);
+        (Bool true);
+        (Bool false);
+        (Bool false);
+        (Bool true);
+        (Bool false);
+
+        (Bool true);
+        (Bool false);
+        (Bool true);
+        (Bool true);
+        (Bool false);
+        (Bool true);
+        (Bool true);
+
         (Bool false);
         (Bool true);
         (Bool true);
