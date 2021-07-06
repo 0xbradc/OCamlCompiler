@@ -15,7 +15,15 @@ Developed by Brad Campbell in the Spring of 2021.
   brew install opam
   ```
 
-3. 
+
+
+# Running the Compiler
+1. Open the project to the root directory and run the following command.
+  ```
+  ocamlbuild -use-ocamlfind evaluation.byte
+  ```
+  
+2. Interact with the compiler!
 
 
 
