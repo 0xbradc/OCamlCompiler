@@ -4,7 +4,7 @@ Developed by Brad Campbell in the Spring of 2021.
 
 
 # Getting Started
-1. [Install Homebrew](http://brew.sh).
+1. Install [Homebrew](http://brew.sh).
 
 2. Run the following for needed dependencies.
   ```
